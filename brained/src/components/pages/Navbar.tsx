@@ -1,15 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { Menu, X, ShoppingBag } from "lucide-react";
 
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
-  const [activeLink, setActiveLink] = useState<string>("/");
+  const location = useLocation();
+  const activeLink = location.pathname;
 
   const toggleMenu = (): void => setIsMenuOpen((prev) => !prev);
-
-  useEffect(() => {
-    setActiveLink(window.location.pathname);
-  }, []);
 
   const links = [
     { href: "/", label: "Home" },
@@ -24,21 +22,21 @@ const Navbar: React.FC = () => {
         <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <a href="/" className="flex items-center space-x-2">
+            <Link to="/" className="flex items-center space-x-2">
               <ShoppingBag className="h-5 w-5 sm:h-6 sm:w-6 text-orange-500" />
               <span className="text-lg sm:text-xl font-bold text-gray-900">
                 ShopEase
               </span>
-            </a>
+            </Link>
           </div>
 
           {/* Desktop Menu */}
           <div className="hidden lg:block">
             <div className="flex items-center space-x-1">
               {links.map((link) => (
-                <a
+                <Link
                   key={link.href}
-                  href={link.href}
+                  to={link.href}
                   className={`text-gray-800 hover:text-orange-500 px-4 py-2 text-sm font-medium transition rounded-full ${
                     activeLink === link.href
                       ? "font-bold text-orange-500 bg-orange-50"
@@ -46,13 +44,13 @@ const Navbar: React.FC = () => {
                   }`}
                 >
                   {link.label}
-                </a>
+                </Link>
               ))}
-              <a href="/login" className="ml-2">
+              <Link to="/login" className="ml-2">
                 <button className="text-black bg-orange-500 hover:bg-orange-600 px-6 py-2 rounded-full text-sm font-medium transition">
                   Login
                 </button>
-              </a>
+              </Link>
             </div>
           </div>
 
@@ -77,9 +75,9 @@ const Navbar: React.FC = () => {
         <div className="lg:hidden bg-white rounded-b-3xl shadow-lg">
           <div className="px-4 pt-2 pb-4 space-y-1">
             {links.map((link) => (
-              <a
+              <Link
                 key={link.href}
-                href={link.href}
+                to={link.href}
                 className={`block px-3 py-2.5 rounded-lg text-base font-medium transition ${
                   activeLink === link.href
                     ? "font-bold text-orange-500 bg-orange-50"
@@ -88,13 +86,13 @@ const Navbar: React.FC = () => {
                 onClick={() => setIsMenuOpen(false)}
               >
                 {link.label}
-              </a>
+              </Link>
             ))}
-            <a href="/login" onClick={() => setIsMenuOpen(false)}>
+            <Link to="/login" onClick={() => setIsMenuOpen(false)}>
               <button className="w-full mt-2 text-white bg-orange-500 hover:bg-orange-600 px-4 py-2.5 rounded-full text-base font-medium transition">
                 Login
               </button>
-            </a>
+            </Link>
           </div>
         </div>
       )}
