@@ -1,6 +1,14 @@
 #root {
   width: 100%;
   min-height: 100vh;
+  background-color: #ffffff;
+  color: #1f2937;
+}
+
+/* Ensure proper text color in light mode */
+body {
+  background-color: #ffffff;
+  color: #1f2937;
 }
 
 .logo {
