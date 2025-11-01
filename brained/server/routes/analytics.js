@@ -4,6 +4,7 @@ const { Parser } = require('json2csv');
 const PDFDocument = require('pdfkit');
 const EventAnalytics = require('../models/EventAnalytics');
 const PerformanceMetrics = require('../models/PerformanceMetrics');
+const posthog = require('../services/posthogClient');
 
 // POST /api/analytics/events
 router.post('/events', async (req, res) => {
@@ -12,6 +13,13 @@ router.post('/events', async (req, res) => {
     // prefer deviceInfo from middleware (parsed UA) but allow client-supplied deviceInfo
     const deviceInfo = req.deviceInfo || req.body.deviceInfo;
     const doc = await EventAnalytics.create({ eventType, element, pageURL, timestamp, deviceInfo, metadata });
+    // capture to PostHog (best-effort)
+    try {
+      const distinctId = req.userId || req.body.userId || req.ip || 'anonymous';
+      posthog.capture(distinctId, eventType || 'event', { element, pageURL, timestamp, metadata, deviceInfo });
+    } catch (e) {
+      // swallow
+    }
     res.status(201).json(doc);
   } catch (err) {
     console.error(err);
@@ -80,6 +88,10 @@ router.post('/performance', async (req, res) => {
     const { pageURL, TTFB, LCP, FCP, CLS, jsErrors, timestamp } = req.body;
     const deviceInfo = req.deviceInfo || req.body.deviceInfo;
     const doc = await PerformanceMetrics.create({ pageURL, TTFB, LCP, FCP, CLS, jsErrors, timestamp, deviceInfo });
+    try {
+      const distinctId = req.userId || req.body.userId || req.ip || 'anonymous';
+      posthog.capture(distinctId, 'performance', { pageURL, TTFB, LCP, FCP, CLS, jsErrors, timestamp, deviceInfo });
+    } catch (e) {}
     res.status(201).json(doc);
   } catch (err) {
     console.error(err);
