@@ -36,7 +36,9 @@ interface Cohort {
   _id: string;
   name: string;
   description?: string;
-  conditions: CohortCondition[];
+  // Backend may return conditions as an array (legacy) OR an object with { events, properties, timeRange }
+  // Accept any here and normalize at render-time
+  conditions: any;
   projectId: string;
   userCount?: number;
   createdAt: string;
@@ -299,14 +301,51 @@ const CohortAnalysis: React.FC = () => {
                     <p className="text-gray-600 mb-4">{selectedCohort.description}</p>
                   )}
                   <div className="flex flex-wrap gap-2">
-                    {selectedCohort.conditions.map((condition, index) => (
-                      <span
-                        key={index}
-                        className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium"
-                      >
-                        {condition.field} {condition.operator} "{condition.value}"
-                      </span>
-                    ))}
+                    {(() => {
+                      const c = selectedCohort.conditions;
+                      const chips: string[] = [];
+                      if (Array.isArray(c)) {
+                        // Legacy shape: array of { field, operator, value }
+                        for (const cond of c as CohortCondition[]) {
+                          chips.push(`${cond.field} ${cond.operator} "${cond.value}"`);
+                        }
+                      } else if (c && typeof c === 'object') {
+                        // New shape: { properties: [], events: [], timeRange }
+                        if (Array.isArray(c.properties)) {
+                          for (const p of c.properties) {
+                            const key = p.key ?? 'prop';
+                            chips.push(`${key} ${p.operator} "${p.value}"`);
+                          }
+                        }
+                        if (Array.isArray(c.events)) {
+                          for (const e of c.events) {
+                            const evt = `${e.eventType || 'event'}:${e.eventName || ''}`.trim();
+                            const val = e.value !== undefined && e.value !== null ? ` "${e.value}"` : '';
+                            chips.push(`[${evt}] ${e.operator}${val}`);
+                          }
+                        }
+                        if (c.timeRange) {
+                          if (c.timeRange.relative) chips.push(`time ${c.timeRange.relative}`);
+                          else if (c.timeRange.from || c.timeRange.to) {
+                            const from = c.timeRange.from ? new Date(c.timeRange.from).toLocaleDateString() : '';
+                            const to = c.timeRange.to ? new Date(c.timeRange.to).toLocaleDateString() : '';
+                            chips.push(`time ${from}${to ? ' → ' + to : ''}`);
+                          }
+                        }
+                      }
+                      return chips.length > 0 ? (
+                        chips.map((label, idx) => (
+                          <span
+                            key={idx}
+                            className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium"
+                          >
+                            {label}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-sm text-gray-500">No conditions defined</span>
+                      );
+                    })()}
                   </div>
                 </div>
                 <div className="text-right">

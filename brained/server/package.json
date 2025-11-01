@@ -7,7 +7,11 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "seed:products": "node scripts/seedProducts.js",
-    "seed:products:reset": "node scripts/seedProducts.js --reset"
+    "seed:products:reset": "node scripts/seedProducts.js --reset",
+    "seed:analytics": "node scripts/seedAnalytics.js",
+    "seed:analytics:reset": "node scripts/seedAnalytics.js --reset",
+    "seed:analytics:with-events": "node scripts/seedAnalytics.js --with-events",
+    "seed:analytics:reset:with-events": "node scripts/seedAnalytics.js --reset --with-events"
   },
   "engines": {
     "node": ">=16"
