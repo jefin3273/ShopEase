@@ -7,6 +7,18 @@ const api = axios.create({
   withCredentials: true // send/receive httpOnly refresh cookie
 });
 
+// Request interceptor to ensure token is always included if available
+api.interceptors.request.use(
+  (config) => {
+    // If there's already an Authorization header, keep it
+    if (!config.headers['Authorization'] && api.defaults.headers.common['Authorization']) {
+      config.headers['Authorization'] = api.defaults.headers.common['Authorization'];
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 // response interceptor to refresh token when access token expired
 let isRefreshing = false;
 let failedQueue: any[] = [];

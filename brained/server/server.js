@@ -9,8 +9,9 @@ const { Server } = require('socket.io');
 const app = express();
 const server = http.createServer(app);
 
-// middleware
-app.use(express.json());
+// middleware - increase payload limit for image uploads (base64 encoded images can be large)
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cookieParser());
 
 // Support a comma-separated list of allowed client origins via CLIENT_URLS

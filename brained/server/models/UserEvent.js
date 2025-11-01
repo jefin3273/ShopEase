@@ -38,43 +38,17 @@ const userEventSchema = new mongoose.Schema({
   pageTitle: String,
   referrer: String,
   
-  // Event metadata
-  metadata: {
-    // For clicks: element, id, className, text, coordinates
-    element: String,
-    id: String,
-    className: String,
-    text: String,
-    x: Number,
-    y: Number,
-    
-    // Viewport dimensions for heatmap normalization
-    vw: Number,
-    vh: Number,
-    
-    // For hovers: duration, area
-    hoverDuration: Number,
-    hoverArea: String,
-    
-    // For scrolls: depth, direction
-    scrollDepth: Number,
-    scrollDirection: String,
-    
-    // For forms: formId, fields
-    formId: String,
-    fields: [String],
-    
-    // Custom properties
-    custom: mongoose.Schema.Types.Mixed,
-  },
+  // Event metadata - using Mixed type to handle flexible data structures
+  metadata: mongoose.Schema.Types.Mixed,
   
   // Device & browser info
   device: {
-    type: String, // desktop, mobile, tablet
+    device: String, // desktop, mobile, tablet
     browser: String,
     os: String,
     screenResolution: String,
     viewport: String,
+    raw: mongoose.Schema.Types.Mixed,
   },
   
   // Location

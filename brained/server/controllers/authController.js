@@ -125,10 +125,19 @@ exports.refresh = async (req, res) => {
   const newAccessToken = createAccessToken(user);
     const newRefreshToken = createRefreshToken(user);
 
-    // replace old refresh token
-    user.refreshTokens = user.refreshTokens.filter((t) => t !== token);
-    user.refreshTokens.push(newRefreshToken);
-    await user.save();
+    // replace old refresh token using atomic operation to prevent version conflicts
+    await User.findByIdAndUpdate(
+      user._id,
+      {
+        $pull: { refreshTokens: token },
+      }
+    );
+    await User.findByIdAndUpdate(
+      user._id,
+      {
+        $addToSet: { refreshTokens: newRefreshToken },
+      }
+    );
 
     res.cookie('refreshToken', newRefreshToken, {
       httpOnly: true,
@@ -197,11 +206,27 @@ exports.authenticate = (req, res, next) => {
 exports.authorize = (roles = []) => {
   return async (req, res, next) => {
     try {
-      // must be authenticated first
-      if (!req.userId) return res.status(401).json({ message: 'Not authenticated' });
+      // Extract and verify token
+      const auth = req.headers.authorization;
+      if (!auth) return res.status(401).json({ message: 'No token' });
+      
+      const token = auth.split(' ')[1];
+      if (!token) return res.status(401).json({ message: 'No token' });
+      
+      let payload;
+      try {
+        payload = jwt.verify(token, process.env.JWT_SECRET);
+        req.userId = payload.id;
+        req.userRole = payload.role;
+      } catch (e) {
+        return res.status(401).json({ message: 'Invalid or expired token' });
+      }
+      
+      // Check user exists and has required role
       const user = await User.findById(req.userId);
       if (!user) return res.status(401).json({ message: 'User not found' });
-      if (!roles.includes(user.role)) return res.status(403).json({ message: 'Forbidden' });
+      if (!roles.includes(user.role)) return res.status(403).json({ message: 'Forbidden: Admin access required' });
+      
       next();
     } catch (err) {
       console.error(err);

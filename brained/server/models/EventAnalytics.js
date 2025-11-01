@@ -11,7 +11,11 @@ const DeviceInfoSchema = new mongoose.Schema(
 
 const EventAnalyticsSchema = new mongoose.Schema(
   {
-    eventType: { type: String, enum: ['click', 'scroll', 'hover'], required: true },
+    eventType: { 
+      type: String, 
+      enum: ['click', 'scroll', 'hover', 'custom', 'submit', 'pageview', 'form_submit', 'button_click', 'input', 'change', 'focus', 'blur'], 
+      required: true 
+    },
     element: { type: String },
     pageURL: { type: String },
     timestamp: { type: Date, default: Date.now },
