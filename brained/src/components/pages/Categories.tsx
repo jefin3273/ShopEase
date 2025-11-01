@@ -160,6 +160,8 @@ export default function Category() {
           />
         ))}
       </BentoGrid>
+
+       <div className="h-10 sm:h-12"></div> 
     </section>
   );
 }
