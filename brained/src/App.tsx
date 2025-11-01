@@ -11,6 +11,7 @@ import Profile from "./pages/Profile";
 import Navbar from "./components/pages/Navbar";
 import ProductList from "./components/pages/ProductList";
 import Category from "./components/pages/Categories";
+import Cart from "./components/pages/Cart";
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/products" element={<ProductList />} />
           <Route path="/categories" element={<Category />} />
+          <Route path="/cart" element={<Cart/>} />
 
           {/* Admin Routes */}
           <Route
