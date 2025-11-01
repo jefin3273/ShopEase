@@ -28,7 +28,7 @@ function HomePage() {
             <Navbar />
 
             {/* Spacer for fixed navbar */}
-             <div className="h-10 sm:h-14"></div> 
+             <div className="h-10 sm:h-4"></div> 
 
             {/* Banner Section */}
             <Banner />
