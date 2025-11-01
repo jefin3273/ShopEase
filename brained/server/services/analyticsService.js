@@ -5,6 +5,7 @@
 
 const UserEvent = require('../models/UserEvent');
 const SessionRecording = require('../models/SessionRecording');
+const { v4: uuidv4 } = require('uuid');
 
 class AnalyticsService {
   /**
@@ -12,9 +13,11 @@ class AnalyticsService {
    */
   async captureEvent(userId, sessionId, eventData) {
     try {
+      // ensure a sessionId exists (some callers may pass null). Generate one if missing.
+      const sid = sessionId || eventData.sessionId || uuidv4();
       const event = new UserEvent({
         userId,
-        sessionId,
+        sessionId: sid,
         ...eventData,
         timestamp: new Date(),
       });

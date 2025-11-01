@@ -137,6 +137,8 @@ const sessionRecordingSchema = new mongoose.Schema({
   
 }, {
   timestamps: true,
+  // suppress the mongoose reserved-key warning for the 'errors' field used here
+  suppressReservedKeysWarning: true,
 });
 
 // Indexes

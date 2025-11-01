@@ -269,24 +269,63 @@ async function calculateCohortUserCount(cohort) {
 function buildCohortQuery(cohort) {
   const query = { projectId: cohort.projectId };
 
-  cohort.conditions.forEach(condition => {
-    const { field, operator, value } = condition;
+  const conds = cohort.conditions;
 
-    switch (operator) {
-      case 'equals':
-        query[field] = value;
-        break;
-      case 'not_equals':
-        query[field] = { $ne: value };
-        break;
-      case 'contains':
-        query[field] = { $regex: value, $options: 'i' };
-        break;
-      case 'starts_with':
-        query[field] = { $regex: `^${value}`, $options: 'i' };
-        break;
+  // Backwards-compatible handling: some cohorts store conditions as an array
+  // of simple { field, operator, value } conditions; others (seeded by
+  // analytics seeder) use an object { events: [], properties: [], timeRange }.
+  if (Array.isArray(conds)) {
+    conds.forEach(condition => {
+      const { field, operator, value } = condition;
+      switch (operator) {
+        case 'equals':
+          query[field] = value;
+          break;
+        case 'not_equals':
+          query[field] = { $ne: value };
+          break;
+        case 'contains':
+          query[field] = { $regex: value, $options: 'i' };
+          break;
+        case 'starts_with':
+          query[field] = { $regex: `^${value}`, $options: 'i' };
+          break;
+      }
+    });
+  } else if (conds && typeof conds === 'object') {
+    // properties: list of { key, operator, value }
+    if (Array.isArray(conds.properties)) {
+      conds.properties.forEach(prop => {
+        const key = prop.key;
+        const operator = prop.operator;
+        const value = prop.value;
+        if (!key) return;
+        switch (operator) {
+          case 'equals':
+            query[key] = value;
+            break;
+          case 'not_equals':
+            query[key] = { $ne: value };
+            break;
+          case 'contains':
+            query[key] = { $regex: value, $options: 'i' };
+            break;
+          case 'starts_with':
+            query[key] = { $regex: `^${value}`, $options: 'i' };
+            break;
+        }
+      });
     }
-  });
+
+    // events are more complex (counts, sequences). For now, we log a
+    // warning and do not convert event conditions automatically. This avoids
+    // throwing errors for seeded cohorts while still allowing property-based
+    // cohorts to work. A future improvement: resolve event-based conditions
+    // by querying UserEvent and deriving sessionId lists.
+    if (Array.isArray(conds.events) && conds.events.length > 0) {
+      console.warn('Cohort contains event-based conditions; event filters are not applied in this query.');
+    }
+  }
 
   return query;
 }
