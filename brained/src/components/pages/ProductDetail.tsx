@@ -2,6 +2,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { StarIcon } from '@heroicons/react/20/solid';
 import { useState, useEffect } from 'react';
 import { getProductById } from '../../services/products';
+import trackingClient from '../../services/trackingClient';
+import { useCart } from '../../context/CartContext';
 
 function classNames(...classes: (string | boolean | undefined)[]) {
   return classes.filter(Boolean).join(' ');
@@ -13,6 +15,7 @@ export default function ProductDetail() {
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
+  const { addItem } = useCart();
 
   useEffect(() => {
     if (id) {
@@ -25,6 +28,8 @@ export default function ProductDetail() {
     try {
       const data = await getProductById(id);
       setProduct(data);
+      // Track detailed product view once data loaded
+      trackingClient.trackCustomEvent('view_product', { productId: data?._id, category: data?.category, price: data?.price });
     } catch (error) {
       console.error('Failed to load product:', error);
     } finally {
@@ -143,7 +148,20 @@ export default function ProductDetail() {
                 </div>
               )}
 
-              <form className="mt-10">
+              <form
+                className="mt-10"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  addItem({
+                    id: product._id,
+                    title: product.title,
+                    price: product.price,
+                    image: product.image,
+                    category: product.category,
+                  }, 1);
+                  navigate('/cart');
+                }}
+              >
                 {colors.length > 0 && (
                   <div>
                     <h3 className="text-sm font-medium text-gray-900">Color</h3>
@@ -151,7 +169,15 @@ export default function ProductDetail() {
                       <div className="flex items-center gap-x-3">
                         {colors.map((color: any, idx: number) => (
                           <div key={idx} className="flex rounded-full outline -outline-offset-1 outline-black/10">
-                            <input defaultValue={color.id} defaultChecked={idx === 0} name="color" type="radio" aria-label={color.name} className={classNames(color.class || 'bg-gray-500', 'size-8 appearance-none rounded-full forced-color-adjust-none checked:outline-2 checked:outline-offset-2 focus-visible:outline-3 focus-visible:outline-offset-3')} />
+                            <input
+                              defaultValue={color.id}
+                              defaultChecked={idx === 0}
+                              name="color"
+                              type="radio"
+                              aria-label={color.name}
+                              className={classNames(color.class || 'bg-gray-500', 'size-8 appearance-none rounded-full forced-color-adjust-none checked:outline-2 checked:outline-offset-2 focus-visible:outline-3 focus-visible:outline-offset-3')}
+                              onChange={() => trackingClient.trackCustomEvent('select_color', { productId: product._id, color: color.name })}
+                            />
                           </div>
                         ))}
                       </div>
@@ -166,7 +192,14 @@ export default function ProductDetail() {
                       <div className="grid grid-cols-4 gap-3">
                         {sizes.map((size: any, idx: number) => (
                           <label key={idx} aria-label={size.name} className="group relative flex items-center justify-center rounded-md border border-gray-300 bg-white p-3 has-checked:border-orange-600 has-checked:bg-orange-600 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-orange-600 has-disabled:border-gray-400 has-disabled:bg-gray-200 has-disabled:opacity-25">
-                            <input defaultValue={size.name} name="size" type="radio" disabled={!size.inStock} className="absolute inset-0 appearance-none focus:outline-none disabled:cursor-not-allowed" />
+                            <input
+                              defaultValue={size.name}
+                              name="size"
+                              type="radio"
+                              disabled={!size.inStock}
+                              className="absolute inset-0 appearance-none focus:outline-none disabled:cursor-not-allowed"
+                              onChange={() => trackingClient.trackCustomEvent('select_size', { productId: product._id, size: size.name })}
+                            />
                             <span className="text-sm font-medium text-gray-900 uppercase group-has-checked:text-white">{size.name}</span>
                           </label>
                         ))}
@@ -185,6 +218,24 @@ export default function ProductDetail() {
 
                 <button type="submit" disabled={product.stock === 0} className="mt-10 flex w-full items-center justify-center rounded-md border border-transparent bg-orange-500 px-8 py-3 text-base font-medium text-white hover:bg-orange-600 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:outline-hidden transition disabled:bg-gray-300 disabled:cursor-not-allowed">
                   {product.stock === 0 ? 'Out of Stock' : 'Add to bag'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    trackingClient.trackCustomEvent('begin_checkout', { productId: product._id, price: product.price });
+                    addItem({
+                      id: product._id,
+                      title: product.title,
+                      price: product.price,
+                      image: product.image,
+                      category: product.category,
+                    }, 1);
+                    navigate('/checkout');
+                  }}
+                  disabled={product.stock === 0}
+                  className="mt-3 flex w-full items-center justify-center rounded-md border border-gray-300 bg-white px-8 py-3 text-base font-medium text-gray-900 hover:bg-gray-50 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition disabled:bg-gray-100 disabled:cursor-not-allowed"
+                >
+                  {product.stock === 0 ? 'Unavailable' : 'Buy Now'}
                 </button>
               </form>
             </div>

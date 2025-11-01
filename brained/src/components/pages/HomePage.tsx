@@ -1,11 +1,12 @@
-import { ShoppingBag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from './Navbar';
 import Banner from './Banner';
 import { useEffect, useState } from 'react';
 import { getFeatured } from '../../services/products';
+import trackingClient from '../../services/trackingClient';
 
 function HomePage() {
+    const navigate = useNavigate();
     const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 
@@ -74,8 +75,24 @@ function HomePage() {
                                             </div>
                                         </div>
                                         <div className="flex items-center justify-between gap-3 mt-4">
-                                            <button className="px-4 sm:px-5 py-2.5 bg-gradient-to-r from-orange-400 to-pink-500 text-white rounded-lg text-sm sm:text-base font-medium hover:opacity-95 transition-shadow shadow-md">Add to Cart</button>
-                                            <button className="text-sm text-gray-600 hover:text-gray-900">View</button>
+                                            <button
+                                                className="px-4 sm:px-5 py-2.5 bg-linear-to-r from-orange-400 to-pink-500 text-white rounded-lg text-sm sm:text-base font-medium hover:opacity-95 transition-shadow shadow-md"
+                                                onClick={() => {
+                                                    trackingClient.trackCustomEvent('add_to_cart', { productId: product._id, page: 'home' });
+                                                    navigate('/cart');
+                                                }}
+                                            >
+                                                Add to Cart
+                                            </button>
+                                            <button
+                                                className="text-sm text-gray-600 hover:text-gray-900"
+                                                onClick={() => {
+                                                    trackingClient.trackCustomEvent('product_card_click', { productId: product._id, page: 'home' });
+                                                    navigate(`/product/${product._id}`);
+                                                }}
+                                            >
+                                                View
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -98,7 +115,7 @@ function HomePage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-                        <div className="relative bg-gray-800 text-white rounded-2xl p-8 sm:p-10 lg:p-12 overflow-hidden min-h-[280px] sm:min-h-[320px] flex items-center">
+                        <div className="relative bg-gray-800 text-white rounded-2xl p-8 sm:p-10 lg:p-12 overflow-hidden min-h-[280px] sm:min-h-80 flex items-center">
                             <div className="absolute inset-0 opacity-20">
                                 <img
                                     src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=800&h=400&fit=crop"
@@ -114,13 +131,19 @@ function HomePage() {
                                 <p className="text-base sm:text-lg text-gray-300 mb-6 sm:mb-8 leading-relaxed">
                                     Get 20% off on your first purchase. Use code WELCOME20 at checkout.
                                 </p>
-                                <button className="px-6 sm:px-7 py-3 bg-white text-gray-900 rounded-lg font-semibold hover:bg-gray-100 transition text-base sm:text-lg shadow-lg hover:shadow-xl">
+                                <button
+                                    className="px-6 sm:px-7 py-3 bg-white text-gray-900 rounded-lg font-semibold hover:bg-gray-100 transition text-base sm:text-lg shadow-lg hover:shadow-xl"
+                                    onClick={() => {
+                                        trackingClient.trackCustomEvent('promo_cta_click', { promo: 'new_customer_discount' });
+                                        navigate('/products');
+                                    }}
+                                >
                                     Shop Now
                                 </button>
                             </div>
                         </div>
 
-                        <div className="relative bg-gray-100 rounded-2xl p-8 sm:p-10 lg:p-12 overflow-hidden min-h-[280px] sm:min-h-[320px] flex items-center">
+                        <div className="relative bg-gray-100 rounded-2xl p-8 sm:p-10 lg:p-12 overflow-hidden min-h-[280px] sm:min-h-80 flex items-center">
                             <div className="absolute inset-0 opacity-30">
                                 <img
                                     src="https://images.unsplash.com/photo-1558769132-cb1aea1f1d36?w=800&h=400&fit=crop"
@@ -137,7 +160,13 @@ function HomePage() {
                                 <p className="text-base sm:text-lg text-gray-700 mb-6 sm:mb-8 leading-relaxed">
                                     Free shipping on all orders over $50. No code needed, automatically applied.
                                 </p>
-                                <button className="px-6 sm:px-7 py-3 bg-orange-500 text-white rounded-lg font-semibold hover:bg-orange-600 transition text-base sm:text-lg shadow-lg hover:shadow-xl">
+                                <button
+                                    className="px-6 sm:px-7 py-3 bg-orange-500 text-white rounded-lg font-semibold hover:bg-orange-600 transition text-base sm:text-lg shadow-lg hover:shadow-xl"
+                                    onClick={() => {
+                                        trackingClient.trackCustomEvent('promo_cta_click', { promo: 'free_shipping' });
+                                        navigate('/products');
+                                    }}
+                                >
                                     Browse Products
                                 </button>
                             </div>

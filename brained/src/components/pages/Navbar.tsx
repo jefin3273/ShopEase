@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from '../../context/AuthContext';
 import { Menu, X, ShoppingBag } from "lucide-react";
+import trackingClient from '../../services/trackingClient';
 
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
@@ -18,6 +19,15 @@ const Navbar: React.FC = () => {
     { href: "/about", label: "About Us" },
   ];
 
+  const [query, setQuery] = useState("");
+  const onSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = query.trim();
+    if (!q) return;
+    trackingClient.trackCustomEvent('search', { query: q, source: 'navbar' });
+    window.location.href = `/search?q=${encodeURIComponent(q)}`;
+  };
+
   let auth: any = null;
   try { auth = useAuth(); } catch (e) { auth = null; }
 
@@ -28,7 +38,7 @@ const Navbar: React.FC = () => {
           {/* Logo */}
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-orange-400 to-pink-500 rounded-md flex items-center justify-center shadow">
+              <div className="w-9 h-9 bg-linear-to-br from-orange-400 to-pink-500 rounded-md flex items-center justify-center shadow">
                 <ShoppingBag className="h-5 w-5 text-white" />
               </div>
               <span className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">
@@ -51,6 +61,16 @@ const Navbar: React.FC = () => {
                 {link.label}
               </Link>
             ))}
+            <form onSubmit={onSearchSubmit} className="ml-2">
+              <input
+                type="search"
+                placeholder="Search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="px-3 py-2 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                aria-label="Search products"
+              />
+            </form>
             <div className="flex items-center gap-3">
               {auth && auth.user ? (
                 <>
@@ -67,7 +87,7 @@ const Navbar: React.FC = () => {
                 </>
               ) : (
                 <Link to="/login">
-                  <button className="text-sm bg-gradient-to-r from-orange-400 to-pink-500 text-white px-4 py-2 rounded-md shadow">Sign in</button>
+                  <button className="text-sm bg-linear-to-r from-orange-400 to-pink-500 text-white px-4 py-2 rounded-md shadow">Sign in</button>
                 </Link>
               )}
             </div>
@@ -106,6 +126,16 @@ const Navbar: React.FC = () => {
                 {link.label}
               </Link>
             ))}
+            <form onSubmit={(e) => { onSearchSubmit(e); setIsMenuOpen(false); }} className="pt-2 pb-1">
+              <input
+                type="search"
+                placeholder="Search products"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="w-full px-3 py-2 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                aria-label="Search products"
+              />
+            </form>
             <Link to="/login" onClick={() => setIsMenuOpen(false)}>
               <button className="w-full mt-2 text-white bg-orange-500 hover:bg-orange-600 px-4 py-2.5 rounded-full text-base font-medium transition">
                 Login

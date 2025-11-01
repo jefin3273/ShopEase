@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   IconArrowWaveRightUp,
@@ -44,12 +45,18 @@ export const BentoGridItem = ({
   header?: React.ReactNode;
   icon?: React.ReactNode;
 }) => {
+  const navigate = useNavigate();
   return (
     <div
       className={cn(
-        "group/bento shadow-input row-span-1 flex flex-col justify-between space-y-4 rounded-xl border border-neutral-200 bg-white p-4 transition duration-200 hover:shadow-xl dark:border-white/[0.2] dark:bg-black dark:shadow-none",
+        "group/bento shadow-input row-span-1 flex flex-col justify-between space-y-4 rounded-xl border border-neutral-200 bg-white p-4 transition duration-200 hover:shadow-xl dark:border-white/20 dark:bg-black dark:shadow-none cursor-pointer",
         className
       )}
+      onClick={() => {
+        const categoryLabel = typeof title === 'string' ? title : 'Unknown';
+        // Navigate to products with category filter
+        navigate(`/products?category=${encodeURIComponent(categoryLabel)}`);
+      }}
     >
       {header}
       <div className="transition duration-200 group-hover/bento:translate-x-2">
@@ -66,7 +73,7 @@ export const BentoGridItem = ({
 };
 
 const Skeleton = ({ image }: { image: string }) => (
-  <div className="flex flex-1 w-full h-full min-h-[6rem] rounded-xl overflow-hidden">
+  <div className="flex flex-1 w-full h-full min-h-24 rounded-xl overflow-hidden">
     <img
       src={image}
       alt="category"

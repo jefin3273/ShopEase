@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ShoppingCart, Heart, Eye } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { getProducts } from '../../services/products';
+import trackingClient from '../../services/trackingClient';
+import { useCart } from '../../context/CartContext';
 
 interface Product {
   _id: string;
@@ -24,10 +26,23 @@ const ProductList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useState<string[]>([]);
   const navigate = useNavigate();
+  const location = useLocation();
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const { addItem } = useCart();
 
   useEffect(() => {
     loadProducts();
   }, []);
+
+  // Parse category filter from query params
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const category = params.get('category');
+    setCategoryFilter(category);
+    if (category) {
+      trackingClient.trackCustomEvent('category_view', { category });
+    }
+  }, [location.search]);
 
   const loadProducts = async () => {
     try {
@@ -46,6 +61,8 @@ const ProductList: React.FC = () => {
         ? prev.filter((id) => id !== productId)
         : [...prev, productId]
     );
+    const willBeFav = !favorites.includes(productId);
+    trackingClient.trackCustomEvent('favorite_toggled', { productId, favorited: willBeFav });
   };
 
   const renderStars = (rating: number) => {
@@ -81,6 +98,11 @@ const ProductList: React.FC = () => {
     );
   }
 
+  const filteredProducts = useMemo(() => {
+    if (!categoryFilter) return products;
+    return products.filter(p => (p.category || '').toLowerCase() === categoryFilter.toLowerCase());
+  }, [products, categoryFilter]);
+
   return (
     <div className="bg-gray-50 min-h-screen py-12">
       <div className="h-20 sm:h-8 "></div>
@@ -88,14 +110,29 @@ const ProductList: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900 mb-3">
-            All Products
+            {categoryFilter ? `${categoryFilter}` : 'All Products'}
           </h2>
           <p className="text-lg text-gray-600">
             Discover our curated selection of quality products
           </p>
+          {categoryFilter && (
+            <div className="mt-3 inline-flex items-center gap-2 text-sm text-gray-600">
+              <span className="px-2 py-1 rounded-full bg-orange-50 text-orange-600 border border-orange-200">Filtered</span>
+              <button
+                className="underline hover:text-gray-800"
+                onClick={() => {
+                  setCategoryFilter(null);
+                  navigate('/products');
+                  trackingClient.trackCustomEvent('category_clear', {});
+                }}
+              >
+                Clear
+              </button>
+            </div>
+          )}
         </div>
 
-        {products.length === 0 ? (
+        {(filteredProducts.length === 0) ? (
           <div className="text-center py-20">
             <p className="text-xl text-gray-600">No products available yet.</p>
           </div>
@@ -103,11 +140,14 @@ const ProductList: React.FC = () => {
           <>
             {/* Products Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {products.map((product) => (
+              {filteredProducts.map((product) => (
                 <div
                   key={product._id}
                   className="group relative bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden cursor-pointer"
-                  onClick={() => navigate(`/product/${product._id}`)}
+                  onClick={() => {
+                    trackingClient.trackCustomEvent('product_card_click', { productId: product._id, category: product.category });
+                    navigate(`/product/${product._id}`);
+                  }}
                 >
                   {/* Badge */}
                   {product.badge && (
@@ -151,6 +191,7 @@ const ProductList: React.FC = () => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
+                        trackingClient.trackCustomEvent('quick_view', { productId: product._id });
                         navigate(`/product/${product._id}`);
                       }}
                       className="p-2 bg-white/90 backdrop-blur-sm rounded-full text-gray-700 hover:bg-white transition-all"
@@ -215,8 +256,14 @@ const ProductList: React.FC = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          // Add to cart logic here
-                          alert('Added to cart!');
+                          addItem({
+                            id: product._id,
+                            title: product.title,
+                            price: product.price,
+                            image: product.image,
+                            category: product.category,
+                          }, 1);
+                          navigate('/cart');
                         }}
                         className="p-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-all hover:scale-105"
                         aria-label="Add to cart"
