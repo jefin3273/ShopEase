@@ -1,14 +1,69 @@
-# NEURATHON-PagePulse (Brained)
+# 🧠 NEURATHON‑PagePulse (Brained) — E‑commerce + Analytics MERN Starter
 
-> MERN starter combining a Vite/React frontend and an Express/MongoDB backend built to ingest analytics (events + performance), summarize them, and export CSV/PDF reports.
+Modern React + TypeScript storefront with real-time analytics, a persistent shopping cart, streamlined checkout + receipts, and a lightweight Express/MongoDB backend. Built for fast experiments and solid UX.
 
-This repository contains a small React app in `brained/` and a Node/Express backend in `brained/server/`. The backend includes endpoints to ingest analytics, aggregate summaries, export CSV/PDF, basic auth examples, and dev-only seed tooling to verify the data pipeline.
+![React](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=222)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?logo=typescript&logoColor=fff)
+![Vite](https://img.shields.io/badge/Vite-7.x-646cff?logo=vite&logoColor=fff)
+![Express](https://img.shields.io/badge/Express-4-black?logo=express&logoColor=fff)
+![MongoDB](https://img.shields.io/badge/MongoDB-7-47a248?logo=mongodb&logoColor=fff)
+![Socket.IO](https://img.shields.io/badge/Socket.IO-4-010101?logo=socketdotio)
 
 ---
 
-## Quick start (Windows cmd.exe)
+## ✨ Highlights
 
-Backend (server):
+- 🛒 Real cart: add/update/remove with quantities, persisted in localStorage
+- 🔍 Search with filters and sorting (relevance/price/rating)
+- 💳 Checkout requires login only at payment time (cart visible without login)
+- 📄 Order success page with downloadable HTML receipt
+- 🧩 Admin area with analytics (funnels, cohorts, A/B), recordings, heatmaps, performance
+- 📈 Analytics backend for events and performance with summaries and CSV/PDF export
+- 🔒 Rate limiting and server‑side device info enrichment
+- 🔌 Realtime via Socket.IO + custom tracking client
+
+---
+
+## 🗺️ Project Structure
+
+```
+brained/
+  ├── public/
+  ├── src/
+  │   ├── components/
+  │   │   ├── pages/
+  │   │   │   ├── Cart.tsx              # Full cart UI + summary
+  │   │   │   ├── Checkout.tsx          # Simplified checkout (login required here)
+  │   │   │   ├── OrderSuccess.tsx      # Success screen + receipt download
+  │   │   │   ├── ProductList.tsx, ProductDetail.tsx, SearchResults.tsx, …
+  │   │   └── ui/                        # Shadcn-style UI primitives
+  │   ├── context/
+  │   │   └── CartContext.tsx           # Global cart with persistence + tracking
+  │   ├── services/
+  │   │   └── trackingClient.ts         # Custom analytics/tracking client
+  │   └── App.tsx, main.tsx
+  ├── server/
+  │   ├── controllers/
+  │   │   └── ordersController.js
+  │   ├── models/
+  │   │   └── Order.js
+  │   ├── routes/
+  │   │   ├── orders.js
+  │   │   └── analytics.js
+  │   ├── middleware/
+  │   │   ├── rateLimiter.js
+  │   │   └── deviceInfo.js
+  │   ├── scripts/                      # Seed scripts (products, analytics)
+  │   └── server.js                     # Express + Socket.IO + MongoDB
+  ├── package.json (frontend)
+  └── README.md (frontend)
+```
+
+---
+
+## 🚀 Quick start (Windows cmd.exe)
+
+1) Backend (server)
 
 ```cmd
 cd C:\Users\shaun\projects\NEURATHON-PagePulse\brained\server
@@ -16,7 +71,7 @@ npm install
 npm run dev
 ```
 
-Frontend (client):
+2) Frontend (client)
 
 ```cmd
 cd C:\Users\shaun\projects\NEURATHON-PagePulse\brained
@@ -24,73 +79,92 @@ npm install
 npm run dev
 ```
 
+Defaults: frontend http://localhost:5173, backend http://localhost:5000 (or set `PORT=5001` in `server/.env`).
+
 ---
 
-## How to run and verify (detailed, cmd.exe)
+## ⚙️ Configure environment
 
-1) Install and start the backend
+Create `brained/server/.env` (never commit secrets):
 
-```cmd
-cd C:\Users\shaun\projects\NEURATHON-PagePulse\brained\server
-npm install
-npm run dev
+```properties
+MONGO_URI=mongodb://localhost:27017/pagepulse
+# Recommended to set a port explicitly
+PORT=5001
+# One or many origins (comma-separated)
+CLIENT_URLS=http://localhost:5173
+# Optional if you use JWT in auth routes
+JWT_SECRET=your_jwt_secret_here
 ```
 
-2) Health check
+Optionally create `brained/.env` (frontend):
 
-```cmd
-curl http://localhost:5000/api/health
-```
-
-Expected response:
-
-```json
-{"status":"Server running"}
-```
-
-3) Seed sample data (development only)
-
-```cmd
-curl http://localhost:5000/api/analytics/seed
-```
-
-Expected: JSON showing counts and created documents. After seeding, verify ingestion/aggregation:
-
-```cmd
-curl http://localhost:5000/api/analytics/events
-curl http://localhost:5000/api/analytics/performance
-curl http://localhost:5000/api/analytics/events/summary
-curl http://localhost:5000/api/analytics/performance/summary
-```
-
-4) Export (CSV / PDF)
-
-```cmd
-curl -v http://localhost:5000/api/analytics/export/csv --output analytics.csv
-curl -v http://localhost:5000/api/analytics/export/pdf --output analytics.pdf
+```properties
+VITE_API_BASE=http://localhost:5001
 ```
 
 ---
 
-## What this project includes
+## 🧪 Verify the backend
 
-- Frontend: `brained/` (Vite + React). Use it as the UI to capture interactions and show dashboards.
-- Backend: `brained/server/` (Express) with:
-  - `server.js` — entrypoint, DB connection, route mounting
-  - `routes/analytics.js` — ingest endpoints, summaries, export CSV/PDF, integration stubs, seed
-  - `routes/auth.js` — simple register/login example
-  - `models/` — `EventAnalytics.js`, `PerformanceMetrics.js`, `User.js`
-  - `middleware/` — `rateLimiter.js`, `deviceInfo.js`
-  - `.env.example` / `.env` for configuration
+Health check:
+
+```cmd
+curl http://localhost:5001/api/health
+```
+
+Seed sample analytics data (dev only):
+
+```cmd
+curl http://localhost:5001/api/analytics/seed
+```
+
+Summaries:
+
+```cmd
+curl http://localhost:5001/api/analytics/events/summary
+curl http://localhost:5001/api/analytics/performance/summary
+```
+
+Exports:
+
+```cmd
+curl -v http://localhost:5001/api/analytics/export/csv --output analytics.csv
+curl -v http://localhost:5001/api/analytics/export/pdf --output analytics.pdf
+```
 
 ---
 
-## API reference (selected endpoints)
+## 🧰 Key Features
 
-Ingest:
+### 🛒 Cart & Search
+- Add to cart from list/detail pages, update quantities, remove items
+- Persistent via localStorage; survives login/logout and refreshes
+- Search results page with category filter and sorting
 
-- POST /api/analytics/events
-  - Body example:
+### 💳 Checkout & Orders
+- Cart accessible without login; login required only at checkout
+- After payment: navigate to success page and download HTML receipt
+- Orders stored in MongoDB and linked to the authenticated user
+
+Order endpoints (auth‑secured):
+
+```
+POST   /api/orders                 # create order (auth)
+GET    /api/orders/my-orders       # user’s orders (auth)
+GET    /api/orders/:id             # order details (auth + owner/admin)
+GET    /api/orders/admin/all       # admin only
+PATCH  /api/orders/:id/status      # admin only
+```
+
+### 📊 Analytics API
+- Ingest events: `POST /api/analytics/events`
+- Ingest performance: `POST /api/analytics/performance`
+- Summaries: `GET /api/analytics/events/summary`, `GET /api/analytics/performance/summary`
+- Exports: `GET /api/analytics/export/csv`, `GET /api/analytics/export/pdf`
+- Integration stubs: `POST /api/analytics/integrations/{hotjar|mixpanel|custom}`
+
+Request body examples:
 
 ```json
 {
@@ -100,8 +174,6 @@ Ingest:
   "metadata": { "source": "banner" }
 }
 ```
-
-- POST /api/analytics/performance
 
 ```json
 {
@@ -113,389 +185,98 @@ Ingest:
 }
 ```
 
-Summaries:
+---
 
-- GET /api/analytics/events/summary — counts by eventType and by (pageURL, eventType)
-- GET /api/analytics/performance/summary — average metrics (TTFB/LCP/FCP/CLS) by pageURL
+## 🧱 Architecture (high level)
 
-Exports:
+Browser (React) → Express API → MongoDB
 
-- GET /api/analytics/export/csv — combined CSV (events + performance)
-- GET /api/analytics/export/pdf — summary PDF (sampled)
-
-Utilities (dev):
-
-- GET /api/health — health check
-- GET /api/analytics/seed — insert sample documents (dev only)
-
-Integration stubs:
-
-- POST /api/analytics/integrations/hotjar
-- POST /api/analytics/integrations/mixpanel
-- POST /api/analytics/integrations/custom
+- Frontend: captures interactions and performance metrics, hits ingestion endpoints
+- Server: enriches with UA‑parsed device info, rate‑limits, persists to MongoDB, aggregates, exports CSV/PDF
+- MongoDB: stores `event_analytics`, `performance_metrics`, and `orders`
 
 ---
 
-## Data models (high level)
+## 🧪 Demo data (optional)
 
-- EventAnalytics:
-  - eventType: String (click, scroll, hover)
-  - element: String
-  - pageURL: String
-  - timestamp: Date
-  - deviceInfo: { device, browser, os, raw }
-  - metadata: Mixed
-
-- PerformanceMetrics:
-  - pageURL: String
-  - TTFB, LCP, FCP, CLS: Number
-  - jsErrors: Array
-  - timestamp: Date
-  - deviceInfo: { device, browser, os, raw }
-
----
-
-## Architecture & flow (detailed)
-
-1. Frontend collects events & performance metrics. It should post to `/api/analytics/events` and `/api/analytics/performance`.
-2. Requests hit the Express server. Middleware:
-   - `deviceInfo` parses the `User-Agent` header and attaches `req.deviceInfo` (server-side device/browser/os).
-   - `rateLimiter` rejects requests that exceed configured thresholds.
-3. Server persists raw documents to MongoDB using Mongoose.
-4. Aggregation endpoints run efficient MongoDB aggregation pipelines to compute counts and averages for dashboards.
-5. Export endpoints generate CSV (via `json2csv`) or PDF (via `pdfkit`) — suitable for small/medium datasets in current implementation.
-
-Storage:
-
-- Events are stored in `event_analytics` collection.
-- Performance metrics are stored in `performance_metrics` collection.
-
----
-
-## Environment variables
-
-Place these in `brained/server/.env` (or root `.env`) — never commit secrets.
-
-- MONGO_URI — Atlas connection string (include DB name if you want): `mongodb+srv://USER:PASS@host/<dbname>?retryWrites=true&w=majority`
-- JWT_SECRET — JWT signing secret
-- PORT — default `5000`
-- CLIENT_URL — frontend origin (CORS)
-
-Example:
-
-```properties
-MONGO_URI=mongodb+srv://<username>:<password>@cluster0.example.mongodb.net/<dbname>?retryWrites=true&w=majority
-JWT_SECRET=your_jwt_secret_here
-PORT=5000
-CLIENT_URL=http://localhost:3000
-```
-
----
-
-## Security and production notes
-
-- Protect ingestion and export endpoints with authentication (JWT/api-key).
-- Remove or protect `/api/analytics/seed` in production.
-- Limit export sizes; implement background export jobs and store results in object storage for large datasets.
-- Use HTTPS and secure secrets with a vault or environment configuration in production.
-
----
-
-## Testing & validation
-
-- Manual:
-  - Start server, hit `/api/health`, run `/api/analytics/seed`, then call summary and export endpoints to verify.
-
-- Automated (recommended):
-  - Add `supertest` + `jest` and write integration tests that seed and assert aggregation outputs.
-
----
-
-## Recommended next steps (pick any)
-
-1. Add authentication for ingestion/export endpoints (API key / JWT).
-2. Implement pagination and time-range filters for summary endpoints (query params).
-3. Move exports to background jobs (e.g., BullMQ + Redis) and store results in S3.
-4. Add Docker + docker-compose for local development (backend + local MongoDB).
-5. Add CI (GitHub Actions) with tests and linting.
-
----
-
-If you want, I can implement any of the recommended next steps. Tell me which one and I'll add it (Docker compose, tests, auth, etc.).
-
----
-
-License: MIT
-# NEURATHON-PagePulse (Brained)
-
-Comprehensive MERN (MongoDB, Express, React, Node.js) starter for the Brained frontend and analytics backend. This repository contains a React frontend (in `brained/`) and a Node/Express backend (in `brained/server`) with analytics ingestion, exports, and basic auth examples.
-
-This README documents everything you need to run, test, and extend the project: architecture, data flow, environment variables, endpoints (health and seed), development commands, deployment notes and recommended next steps.
-
----
-
-## Table of Contents
-
-- Project overview
-- What is included
-- Architecture & flow (diagram)
-- Key files and folders
-- Environment variables
-- Backend: run & test (health, seed, analytics)
-- Frontend: run & connect
-- Exports (CSV / PDF)
-- Integrations and stubs (Hotjar, Mixpanel, custom)
-- Security & notes
-- Testing & quality gates
-- Next steps and recommended improvements
-- License
-
----
-
-## Project overview
-
-This repository is a MERN template tailored for collecting page performance and user event analytics for a React frontend. The backend exposes a small REST API for ingesting events and performance metrics, provides aggregation endpoints for dashboards, and supports exports (CSV and PDF).
-
-The backend is intentionally minimal and easy to extend. It includes:
-- Express server with Mongoose for MongoDB access
-- CORS enabled for the frontend
-- Device/browser metadata captured from User-Agent (server-side)
-- Rate limiting to protect ingestion endpoints
-- CSV export via `json2csv` and PDF export via `pdfkit`
-
-The frontend directory (`brained/`) contains an example React app (Vite + TypeScript setup) which you can connect to the backend. The repository was scaffolded so you can run both frontend and backend locally.
-
----
-
-## What is included
-
-- `brained/` — React frontend (existing app)
-- `brained/server/` — Express backend (server.js, routes, models, middleware)
-  - `models/` — Mongoose models (User, EventAnalytics, PerformanceMetrics)
-  - `routes/` — auth, analytics (ingest/export/summary), analytics seed endpoint
-  - `middleware/` — rate limiter, deviceInfo (UA parser)
-  - `.env.example` and `.env` (fill with your values; do NOT commit secrets)
-- Root `README.md` (this file)
-
----
-
-## Architecture & flow
-
-High level architecture:
-
-Client (React) --> Backend (Express) --> MongoDB Atlas
-
-Key responsibilities:
-- Frontend (React): UI, capturing events/perf metrics, calling ingestion endpoints
-- Backend (Express): receive data, enrich (device info), persist to MongoDB, provide summarization APIs & exports
-- MongoDB Atlas: store events and performance metrics
-
-ASCII flow diagram
-
-```
-[Browser / Client] --(POST events/perf)--> [Express API: /api/analytics]
-     |                                         |---> Persist -> MongoDB (event_analytics)
-     |                                         |---> Persist -> MongoDB (performance_metrics)
-     |                                         |---> /export/csv (json2csv)
-     |                                         |---> /export/pdf (pdfkit)
-     |                                         |---> /events/summary (aggregation)
-     v
-  User Interactions (click, scroll, hover) and Performance Observations (TTFB, LCP, FCP, CLS)
-```
-
-Sequence (simplified):
-1. Frontend records an event/perf metric.
-2. Frontend sends POST /api/analytics/events or /api/analytics/performance.
-3. Server middleware parses User-Agent into `deviceInfo` and rate-limits requests.
-4. Server saves documents in MongoDB collections.
-5. Dashboard / Admin can query summary endpoints or export CSV/PDF.
-
----
-
-## Key files and folders (server)
-
-- `brained/server/server.js` — Entry point. Connects to MongoDB, mounts routes and middleware.
-- `brained/server/models/EventAnalytics.js` — Schema for event data (eventType, element, pageURL, timestamp, deviceInfo, metadata).
-- `brained/server/models/PerformanceMetrics.js` — Schema for performance metrics (TTFB, LCP, FCP, CLS, jsErrors, deviceInfo).
-- `brained/server/routes/analytics.js` — API endpoints for ingesting data, summaries, and exports.
-- `brained/server/routes/auth.js` — Example auth endpoints (register/login) with JWT.
-- `brained/server/middleware/deviceInfo.js` — Parses user-agent into device/browser/os using `ua-parser-js`.
-- `brained/server/middleware/rateLimiter.js` — Express rate limiter to prevent abuse.
-
----
-
-## Environment variables
-
-Copy the example and fill values. Do not commit secrets.
-
-File: `brained/server/.env` (or root `.env`)
-
-Required:
-- `MONGO_URI` — MongoDB Atlas connection string. Prefer including the database name: `mongodb+srv://USER:PASS@host/<dbname>?retryWrites=true&w=majority`
-- `JWT_SECRET` — secret for signing JWTs (if you use the auth endpoints)
-- `PORT` — backend port (default `5000`)
-- `CLIENT_URL` — frontend URL allowed by CORS (e.g., `http://localhost:3000`)
-
-Example (do NOT paste credentials here):
-```properties
-MONGO_URI=mongodb+srv://<username>:<password>@cluster0.example.mongodb.net/<dbname>?retryWrites=true&w=majority
-JWT_SECRET=your_jwt_secret_here
-PORT=5000
-CLIENT_URL=http://localhost:3000
-```
-
-Security note: rotate DB credentials if they were committed accidentally. Keep `.env` in `.gitignore`.
-
----
-
-## Backend: run & test
-
-From the server folder:
+From `brained/server`:
 
 ```cmd
-cd C:\Users\shaun\projects\NEURATHON-PagePulse\brained\server
-npm install
-npm run dev
+:: Products
+npm run seed:products
+:: or reset
+npm run seed:products:reset
+
+:: Analytics (funnels, cohorts, experiments)
+npm run seed:analytics
+:: with sample events
+npm run seed:analytics:with-events
 ```
 
-Available useful endpoints (server must be running on port 5000):
+---
 
-- Health check
-  - GET /api/health
-  - Response: `{ "status": "Server running" }`
+## 🔐 Auth flow
 
-- Seed sample data (development only)
-  - GET /api/analytics/seed
-  - Inserts example EventAnalytics and PerformanceMetrics documents for testing and returns the created documents.
+- Anonymous users can browse and build a cart
+- Login enforced at checkout time; after login you’re returned to the flow
+- Only the last 4 digits of any card are stored (when present)
 
-- Ingest endpoints
-  - POST /api/analytics/events
-    - Body example:
-      ```json
-      {
-        "eventType": "click",
-        "element": "#signup",
-        "pageURL": "https://example.com/signup",
-        "metadata": { "source": "banner" }
-      }
-      ```
+---
 
-  - POST /api/analytics/performance
-    - Body example:
-      ```json
-      {
-        "pageURL": "https://example.com",
-        "TTFB": 120,
-        "LCP": 1500,
-        "FCP": 600,
-        "CLS": 0.02
-      }
-      ```
+## 🧾 Receipts
 
-- Aggregations / Summaries
-  - GET /api/analytics/events/summary — counts by eventType and by (pageURL, eventType)
-  - GET /api/analytics/performance/summary — average LCP, FCP, CLS, TTFB grouped by pageURL
+After a successful order you’ll land on `/order-success` and can “Download Receipt” (HTML) for your records.
 
-- Exports
-  - GET /api/analytics/export/csv — returns `analytics.csv` combining events and performance rows (json2csv)
-  - GET /api/analytics/export/pdf — returns `analytics.pdf` summary (pdfkit)
+---
 
-- Integration stubs
-  - POST /api/analytics/integrations/hotjar
-  - POST /api/analytics/integrations/mixpanel
-  - POST /api/analytics/integrations/custom
+## 🛠️ Troubleshooting
+
+- CORS: ensure `CLIENT_URLS` in `server/.env` includes your frontend origin
+- API base: set `VITE_API_BASE` if your server isn’t on http://localhost:5001
+- Mongo: verify `MONGO_URI` and that MongoDB is running
+- Port: server defaults to `5000`; set `PORT=5001` to match examples above
+
+---
+
+## 🧑‍💻 Demo account
+
+Use a quick test account or create one via Signup:
+
+```
+Email: demo@shopease.local
+Password: demo1234
+```
 
 Notes:
-- Device/browser metadata is captured server-side from the `User-Agent` header and attached as `deviceInfo`. The server prefers that over client-supplied `deviceInfo` but will accept client values.
-- Rate limiting (100 requests per 15 minutes per IP) is enabled globally; adjust in `middleware/rateLimiter.js`.
+- Admin pages require a user with role `admin` (flip in MongoDB for your test user if needed)
+- Cart works without login; checkout prompts for auth and resumes with your cart
 
 ---
 
-## Frontend: run & connect
+## 🎥 Screenshots & GIFs
 
-The frontend app is in `brained/` (Vite + React). To start it:
+Place media under `brained/public/demo/` (or `docs/`) and update links:
 
-```cmd
-cd C:\Users\shaun\projects\NEURATHON-PagePulse\brained
-npm install
-npm run dev
-```
-
-Make sure `CLIENT_URL` in server `.env` matches the address used by the frontend (usually `http://localhost:5173` or `http://localhost:3000` depending on your config). The server uses this for CORS.
-
-If you want the frontend to proxy API requests during development, add a `proxy` to the frontend dev server config or use fetch with the full URL to `http://localhost:5000`.
+| Flow | Preview |
+|---|---|
+| Home → Product → Add to Cart | ![Add to Cart](brained/public/demo/add-to-cart.gif) |
+| Cart → Checkout → Success | ![Checkout Success](brained/public/demo/checkout-success.gif) |
+| Admin Analytics Overview | ![Analytics Overview](brained/public/demo/analytics-overview.png) |
 
 ---
 
-## Exports (CSV / PDF)
+## 🧭 Next steps
 
-- CSV: `GET /api/analytics/export/csv` returns a CSV file named `analytics.csv`. It combines both event and performance records with a `type` column.
-- PDF: `GET /api/analytics/export/pdf` streams a simple PDF report limited to a sample of records. For large datasets consider background/export jobs or streaming.
+- Protect ingestion/export endpoints (JWT/API key)
+- Add pagination and time-range filters for summaries
+- Move large exports to background jobs (queue + object storage)
+- Add Docker + docker-compose for local MongoDB
+- Add tests (supertest + jest) and CI (GitHub Actions)
 
-Example download (cmd):
-```cmd
-curl -v http://localhost:5000/api/analytics/export/csv --output analytics.csv
-curl -v http://localhost:5000/api/analytics/export/pdf --output analytics.pdf
-```
-
----
-
-## Integrations
-
-The server includes simple stubs for third-party integrations so you can implement forwarding or webhook logic later:
-
-- `POST /api/analytics/integrations/hotjar` — Hotjar stub
-- `POST /api/analytics/integrations/mixpanel` — Mixpanel stub
-- `POST /api/analytics/integrations/custom` — Custom event listener stub
-
-Recommended approach:
-- For Mixpanel, prefer client-side SDK for performance events and server-side batching for sensitive/frequent events.
-- For Hotjar, use the client script for session replay and heatmaps; server-side forwarding can be used for aggregated insights.
+If you want, I can add any of the above (auth, Docker, tests) in this repo.
 
 ---
 
-## Security & operational notes
-
-- Do NOT commit `.env` or secrets. Use `.env.example` for documentation.
-- Rotate DB credentials if they have been exposed.
-- Protect export and seed endpoints in production. Seed is intended for local/dev only.
-- Add authentication (JWT or API key) for ingestion and export endpoints if the application will be public.
-- Consider storing large exports in object storage (S3) and provide a signed download link instead of streaming for huge datasets.
-
----
-
-## Testing & validation
-
-- Health endpoint: `GET /api/health`
-- Seed endpoint: `GET /api/analytics/seed` (dev only) — creates sample documents so you can verify flows with minimal setup
-- After seeding, call the summary endpoints and verify aggregation results.
-
-Automated tests (suggestions):
-- Add `supertest` + `jest` or `mocha` to run integration tests against the Express app.
-- Create tests: seed -> fetch summaries -> assert counts/averages.
-
----
-
-## Next steps / recommended improvements
-
-- Add authentication/authorization for critical endpoints
-- Implement pagination, time-range filters and rate limits per-route
-- Move exports to background jobs for large datasets (queue + worker + S3)
-- Add monitoring and structured logs (e.g., Winston + Logstash)
-- Add unit/integration tests and CI workflow
-- Add Dockerfile and `docker-compose.yml` for local development with a local MongoDB (optional)
-
----
-
-## License
+## 📄 License
 
 MIT
-
----
-
-If you'd like, I can now:
-- Add a `docker-compose.yml` to run backend + a local MongoDB for development;
-- Add tests that run seed + aggregation and assert results;
-- Protect seed/export endpoints with a simple API key or JWT.
-
-Tell me which of the above you'd like next and I will implement it.
