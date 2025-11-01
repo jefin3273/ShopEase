@@ -37,10 +37,6 @@ function HomePage() {
             <section className="w-full bg-gray-50 py-20 sm:py-24 lg:py-28">
                 <div className="w-full px-4 sm:px-6 lg:px-8">
                     {/* Brand blurb */}
-                    <div className="mb-10 text-center">
-                        <h3 className="text-xl sm:text-2xl font-semibold text-gray-700 mb-2">About ShopEase</h3>
-                        <p className="text-base text-gray-600">ShopEase connects customers with carefully curated products from trusted sellers. We focus on simplicity, fast shipping and exceptional customer support.</p>
-                    </div>
                     <div className="text-center mb-14">
                         <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-3">
                             Featured Products
@@ -137,6 +133,7 @@ function HomePage() {
                                 <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 sm:mb-4">
                                     Free Shipping
                                 </h3>
+                                
                                 <p className="text-base sm:text-lg text-gray-700 mb-6 sm:mb-8 leading-relaxed">
                                     Free shipping on all orders over $50. No code needed, automatically applied.
                                 </p>
