@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../services/api';
 import {
   Play,
   AlertCircle,
@@ -12,22 +12,20 @@ import {
   RefreshCw
 } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
 interface Recording {
   sessionId: string;
   userId?: string;
   startTime: Date;
   duration: number;
-  device: {
-    type: string;
-    browser: string;
-    os: string;
+  device?: {
+    type?: string;
+    browser?: string;
+    os?: string;
   };
-  stats: {
-    totalEvents: number;
-    totalClicks: number;
-    totalScrolls: number;
+  stats?: {
+    totalEvents?: number;
+    totalClicks?: number;
+    totalScrolls?: number;
   };
   hasErrors: boolean;
 }
@@ -47,18 +45,18 @@ const RecordingsList: React.FC = () => {
   const fetchRecordings = async () => {
     try {
       setLoading(true);
-      const params: any = { limit: 50 };
+      const params: Record<string, string> = { limit: '50' };
       if (filterErrors) params.hasErrors = 'true';
       if (searchUserId) params.userId = searchUserId;
 
-      const response = await axios.get(`${API_URL}/api/analytics/recordings`, {
+      const response = await api.get('/api/analytics/recordings', {
         params,
-        withCredentials: true,
       });
       setRecordings(response.data.recordings);
       setError(null);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load recordings');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error.response?.data?.message || 'Failed to load recordings');
     } finally {
       setLoading(false);
     }
@@ -198,22 +196,24 @@ const RecordingsList: React.FC = () => {
                 <div className="grid grid-cols-3 gap-2 mb-3">
                   <div className="text-center p-2 bg-gray-50 rounded-lg">
                     <p className="text-xs text-gray-500 mb-1">Events</p>
-                    <p className="text-sm font-bold text-gray-900">{recording.stats.totalEvents}</p>
+                    <p className="text-sm font-bold text-gray-900">{recording.stats?.totalEvents || 0}</p>
                   </div>
                   <div className="text-center p-2 bg-blue-50 rounded-lg">
                     <p className="text-xs text-gray-500 mb-1">Clicks</p>
-                    <p className="text-sm font-bold text-blue-600">{recording.stats.totalClicks}</p>
+                    <p className="text-sm font-bold text-blue-600">{recording.stats?.totalClicks || 0}</p>
                   </div>
                   <div className="text-center p-2 bg-green-50 rounded-lg">
                     <p className="text-xs text-gray-500 mb-1">Scrolls</p>
-                    <p className="text-sm font-bold text-green-600">{recording.stats.totalScrolls}</p>
+                    <p className="text-sm font-bold text-green-600">{recording.stats?.totalScrolls || 0}</p>
                   </div>
                 </div>
 
                 {/* Device Info */}
                 <div className="flex items-center gap-2 text-xs text-gray-500 border-t border-gray-100 pt-3">
                   <MousePointer2 className="w-4 h-4" />
-                  <span>{recording.device.type} • {recording.device.browser} • {recording.device.os}</span>
+                  <span>
+                    {recording.device?.type || 'Unknown'} • {recording.device?.browser || 'Unknown'} • {recording.device?.os || 'Unknown'}
+                  </span>
                 </div>
               </div>
             </div>

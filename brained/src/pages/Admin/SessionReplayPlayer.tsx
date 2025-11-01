@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { 
-  Play, 
-  Pause, 
-  RotateCcw, 
-  SkipForward, 
+import api from '../../services/api';
+import {
+  Play,
+  Pause,
+  RotateCcw,
+  SkipForward,
   SkipBack,
   Volume2,
   AlertCircle,
@@ -14,8 +14,6 @@ import {
   MonitorPlay,
   ArrowLeft
 } from 'lucide-react';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 interface RecordingEvent {
   type: 'mousemove' | 'click' | 'scroll' | 'resize' | 'input' | 'pageChange';
@@ -30,22 +28,22 @@ interface Recording {
   startTime: Date;
   endTime?: Date;
   duration?: number;
-  device: {
-    type: string;
-    browser: string;
-    os: string;
-    screenResolution: string;
+  device?: {
+    type?: string;
+    browser?: string;
+    os?: string;
+    screenResolution?: string;
   };
   events: RecordingEvent[];
   snapshots: any[];
   consoleLogs: any[];
   networkRequests: any[];
   errors: any[];
-  stats: {
-    totalEvents: number;
-    totalClicks: number;
-    totalScrolls: number;
-    totalMoves: number;
+  stats?: {
+    totalEvents?: number;
+    totalClicks?: number;
+    totalScrolls?: number;
+    totalMoves?: number;
     avgMouseSpeed?: number;
   };
   hasErrors: boolean;
@@ -57,7 +55,7 @@ const SessionReplayPlayer: React.FC = () => {
   const [recording, setRecording] = useState<Recording | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Playback state
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -65,7 +63,7 @@ const SessionReplayPlayer: React.FC = () => {
   const [showCursor, setShowCursor] = useState(true);
   const [showClicks, setShowClicks] = useState(true);
   const [showConsole, setShowConsole] = useState(true);
-  
+
   const canvasRef = useRef<HTMLDivElement>(null);
   const cursorRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
@@ -80,13 +78,12 @@ const SessionReplayPlayer: React.FC = () => {
   const fetchRecording = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/api/analytics/recordings/${sessionId}`, {
-        withCredentials: true,
-      });
+      const response = await api.get(`/api/analytics/recordings/${sessionId}`);
       setRecording(response.data.recording);
       setError(null);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load recording');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error.response?.data?.message || 'Failed to load recording');
     } finally {
       setLoading(false);
     }
@@ -171,7 +168,7 @@ const SessionReplayPlayer: React.FC = () => {
     // Find the most recent mousemove event
     const mouseMoveEvents = recording.events.filter(e => e.type === 'mousemove');
     let currentEvent = null;
-    
+
     for (let i = mouseMoveEvents.length - 1; i >= 0; i--) {
       if (mouseMoveEvents[i].timestamp <= targetTimestamp) {
         currentEvent = mouseMoveEvents[i];
@@ -188,10 +185,10 @@ const SessionReplayPlayer: React.FC = () => {
 
   const getCurrentEvents = () => {
     if (!recording || !recording.events) return [];
-    
+
     const firstTimestamp = recording.events[0]?.timestamp || 0;
     const targetTimestamp = firstTimestamp + currentTime * 1000;
-    
+
     return recording.events.filter(
       e => e.timestamp <= targetTimestamp && e.timestamp >= targetTimestamp - 1000
     );
@@ -199,10 +196,10 @@ const SessionReplayPlayer: React.FC = () => {
 
   const getConsoleLogs = () => {
     if (!recording || !recording.consoleLogs || !showConsole) return [];
-    
+
     const firstTimestamp = recording.events[0]?.timestamp || 0;
     const targetTimestamp = firstTimestamp + currentTime * 1000;
-    
+
     return recording.consoleLogs.filter(
       log => log.timestamp <= targetTimestamp
     ).slice(-10); // Last 10 logs
@@ -256,7 +253,7 @@ const SessionReplayPlayer: React.FC = () => {
             <p className="text-sm text-gray-500">Session ID: {recording.sessionId}</p>
           </div>
         </div>
-        
+
         {recording.hasErrors && (
           <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-lg">
             <AlertCircle className="w-5 h-5 text-red-600" />
@@ -272,7 +269,7 @@ const SessionReplayPlayer: React.FC = () => {
         <div className="lg:col-span-2 space-y-4">
           {/* Video Canvas */}
           <div className="bg-white rounded-xl shadow-md overflow-hidden">
-            <div 
+            <div
               ref={canvasRef}
               className="relative bg-gray-900 aspect-video"
               style={{ minHeight: '500px' }}
@@ -308,7 +305,9 @@ const SessionReplayPlayer: React.FC = () => {
                 <div className="text-center">
                   <MonitorPlay className="w-20 h-20 mx-auto mb-4 opacity-50" />
                   <p className="text-lg">Session Recording Playback</p>
-                  <p className="text-sm mt-2">Device: {recording.device.type} • {recording.device.browser} • {recording.device.os}</p>
+                  <p className="text-sm mt-2">
+                    Device: {recording.device?.type || 'Unknown'} • {recording.device?.browser || 'Unknown'} • {recording.device?.os || 'Unknown'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -370,11 +369,10 @@ const SessionReplayPlayer: React.FC = () => {
                     <button
                       key={speed}
                       onClick={() => handleSpeedChange(speed)}
-                      className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                        playbackSpeed === speed
+                      className={`px-3 py-1 rounded text-sm font-medium transition-colors ${playbackSpeed === speed
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                      }`}
+                        }`}
                     >
                       {speed}x
                     </button>
@@ -385,18 +383,16 @@ const SessionReplayPlayer: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setShowCursor(!showCursor)}
-                    className={`p-2 rounded-lg transition-colors ${
-                      showCursor ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                    }`}
+                    className={`p-2 rounded-lg transition-colors ${showCursor ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                      }`}
                     title="Toggle cursor"
                   >
                     <MousePointer2 className="w-5 h-5" />
                   </button>
                   <button
                     onClick={() => setShowClicks(!showClicks)}
-                    className={`p-2 rounded-lg transition-colors ${
-                      showClicks ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                    }`}
+                    className={`p-2 rounded-lg transition-colors ${showClicks ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                      }`}
                     title="Toggle click indicators"
                   >
                     <Volume2 className="w-5 h-5" />
@@ -410,15 +406,15 @@ const SessionReplayPlayer: React.FC = () => {
           <div className="grid grid-cols-4 gap-4">
             <div className="bg-white rounded-lg shadow p-4">
               <p className="text-sm text-gray-500 mb-1">Total Events</p>
-              <p className="text-2xl font-bold text-gray-900">{recording.stats.totalEvents}</p>
+              <p className="text-2xl font-bold text-gray-900">{recording.stats?.totalEvents || 0}</p>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
               <p className="text-sm text-gray-500 mb-1">Clicks</p>
-              <p className="text-2xl font-bold text-blue-600">{recording.stats.totalClicks}</p>
+              <p className="text-2xl font-bold text-blue-600">{recording.stats?.totalClicks || 0}</p>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
               <p className="text-sm text-gray-500 mb-1">Scrolls</p>
-              <p className="text-2xl font-bold text-green-600">{recording.stats.totalScrolls}</p>
+              <p className="text-2xl font-bold text-green-600">{recording.stats?.totalScrolls || 0}</p>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
               <p className="text-sm text-gray-500 mb-1">Duration</p>
@@ -439,19 +435,19 @@ const SessionReplayPlayer: React.FC = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Device:</span>
-                <span className="font-medium">{recording.device.type}</span>
+                <span className="font-medium">{recording.device?.type || 'Unknown'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Browser:</span>
-                <span className="font-medium">{recording.device.browser}</span>
+                <span className="font-medium">{recording.device?.browser || 'Unknown'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">OS:</span>
-                <span className="font-medium">{recording.device.os}</span>
+                <span className="font-medium">{recording.device?.os || 'Unknown'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Resolution:</span>
-                <span className="font-medium">{recording.device.screenResolution}</span>
+                <span className="font-medium">{recording.device?.screenResolution || 'Unknown'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Started:</span>
@@ -481,13 +477,12 @@ const SessionReplayPlayer: React.FC = () => {
                   consoleLogs.map((log, idx) => (
                     <div
                       key={idx}
-                      className={`p-2 rounded text-xs font-mono ${
-                        log.level === 'error'
+                      className={`p-2 rounded text-xs font-mono ${log.level === 'error'
                           ? 'bg-red-50 text-red-700 border border-red-200'
                           : log.level === 'warn'
-                          ? 'bg-yellow-50 text-yellow-700 border border-yellow-200'
-                          : 'bg-gray-50 text-gray-700 border border-gray-200'
-                      }`}
+                            ? 'bg-yellow-50 text-yellow-700 border border-yellow-200'
+                            : 'bg-gray-50 text-gray-700 border border-gray-200'
+                        }`}
                     >
                       <div className="flex items-start gap-2">
                         <Clock className="w-3 h-3 mt-0.5 flex-shrink-0" />

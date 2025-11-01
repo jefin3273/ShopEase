@@ -1,16 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
-import { 
-  MousePointer2, 
-  ScrollText, 
+import api from '../../services/api';
+import {
+  MousePointer2,
+  ScrollText,
   Activity,
   RefreshCw,
   Download,
   Eye,
   Filter
 } from 'lucide-react';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 interface HeatmapPoint {
   x: number;
@@ -46,19 +44,19 @@ const HeatmapVisualization: React.FC = () => {
 
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/api/analytics/heatmap`, {
+      const response = await api.get('/api/analytics/heatmap', {
         params: {
           projectId: 'default',
           pageURL,
           eventType: heatmapType,
         },
-        withCredentials: true,
       });
 
       setHeatmapData(response.data.heatmapData);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
       console.error('Failed to fetch heatmap data', err);
-      alert(err.response?.data?.message || 'Failed to fetch heatmap data');
+      alert(error.response?.data?.message || 'Failed to fetch heatmap data');
     } finally {
       setLoading(false);
     }
@@ -89,13 +87,13 @@ const HeatmapVisualization: React.FC = () => {
       // Convert viewport percentage to canvas pixels
       const x = (point.vw / 100) * canvas.width;
       const y = (point.vh / 100) * canvas.height;
-      
+
       // Normalize intensity
       const normalizedIntensity = (point.intensity || 1) / maxIntensity;
-      
+
       // Create radial gradient
       const gradient = ctx.createRadialGradient(x, y, 0, x, y, 50);
-      
+
       // Color based on intensity and heatmap type
       const alpha = normalizedIntensity * intensity;
       if (heatmapType === 'click') {
@@ -111,7 +109,7 @@ const HeatmapVisualization: React.FC = () => {
         gradient.addColorStop(0.5, `rgba(200, 100, 255, ${alpha * 0.5})`);
         gradient.addColorStop(1, 'rgba(255, 200, 255, 0)');
       }
-      
+
       ctx.fillStyle = gradient;
       ctx.fillRect(x - 50, y - 50, 100, 100);
     });
@@ -119,7 +117,7 @@ const HeatmapVisualization: React.FC = () => {
 
   const exportHeatmap = () => {
     if (!canvasRef.current) return;
-    
+
     const link = document.createElement('a');
     link.download = `heatmap-${heatmapType}-${Date.now()}.png`;
     link.href = canvasRef.current.toDataURL();
@@ -201,11 +199,10 @@ const HeatmapVisualization: React.FC = () => {
                 <button
                   key={type}
                   onClick={() => setHeatmapType(type)}
-                  className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
-                    heatmapType === type
+                  className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${heatmapType === type
                       ? `bg-gradient-to-r ${getHeatmapColor()} text-white shadow-lg`
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   {type === 'click' && <MousePointer2 className="w-5 h-5" />}
                   {type === 'scroll' && <ScrollText className="w-5 h-5" />}

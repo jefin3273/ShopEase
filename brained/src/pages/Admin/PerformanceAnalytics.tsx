@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { 
-  Zap, 
-  Activity, 
+import api from '../../services/api';
+import {
+  Zap,
+  Activity,
   AlertTriangle,
   Clock,
   TrendingUp,
@@ -11,8 +11,6 @@ import {
   Download
 } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 interface PerformanceMetric {
   pageURL: string;
@@ -42,12 +40,11 @@ const PerformanceAnalytics: React.FC = () => {
   const fetchPerformanceData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/api/analytics/performance`, {
+      const response = await api.get('/api/analytics/performance', {
         params: {
           range: dateRange,
           page: selectedPage === 'all' ? undefined : selectedPage,
         },
-        withCredentials: true,
       });
       setMetrics(response.data.metrics || []);
     } catch (err) {
@@ -59,7 +56,7 @@ const PerformanceAnalytics: React.FC = () => {
 
   const getAverageMetrics = () => {
     if (metrics.length === 0) return { TTFB: 0, LCP: 0, FCP: 0, CLS: 0 };
-    
+
     return {
       TTFB: metrics.reduce((sum, m) => sum + m.TTFB, 0) / metrics.length,
       LCP: metrics.reduce((sum, m) => sum + m.LCP, 0) / metrics.length,
@@ -91,13 +88,13 @@ const PerformanceAnalytics: React.FC = () => {
   const getChartData = () => {
     // Group by hour or day depending on date range
     const grouped: Record<string, { TTFB: number[]; LCP: number[]; FCP: number[]; CLS: number[] }> = {};
-    
+
     metrics.forEach(metric => {
       const date = new Date(metric.timestamp);
-      const key = dateRange === '24h' 
+      const key = dateRange === '24h'
         ? `${date.getHours()}:00`
         : date.toLocaleDateString();
-      
+
       if (!grouped[key]) {
         grouped[key] = { TTFB: [], LCP: [], FCP: [], CLS: [] };
       }
@@ -141,11 +138,10 @@ const PerformanceAnalytics: React.FC = () => {
               <button
                 key={range}
                 onClick={() => setDateRange(range)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  dateRange === range
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${dateRange === range
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                  }`}
               >
                 {range === '24h' ? 'Last 24 Hours' : range === '7d' ? 'Last 7 Days' : 'Last 30 Days'}
               </button>
@@ -183,13 +179,12 @@ const PerformanceAnalytics: React.FC = () => {
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
               <Zap className="w-6 h-6 text-blue-600" />
             </div>
-            <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-              getPerformanceScore('TTFB', avgMetrics.TTFB).color === 'green'
+            <div className={`px-3 py-1 rounded-full text-xs font-medium ${getPerformanceScore('TTFB', avgMetrics.TTFB).color === 'green'
                 ? 'bg-green-100 text-green-700'
                 : getPerformanceScore('TTFB', avgMetrics.TTFB).color === 'yellow'
-                ? 'bg-yellow-100 text-yellow-700'
-                : 'bg-red-100 text-red-700'
-            }`}>
+                  ? 'bg-yellow-100 text-yellow-700'
+                  : 'bg-red-100 text-red-700'
+              }`}>
               {getPerformanceScore('TTFB', avgMetrics.TTFB).rating}
             </div>
           </div>
@@ -207,13 +202,12 @@ const PerformanceAnalytics: React.FC = () => {
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
               <Activity className="w-6 h-6 text-green-600" />
             </div>
-            <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-              getPerformanceScore('LCP', avgMetrics.LCP).color === 'green'
+            <div className={`px-3 py-1 rounded-full text-xs font-medium ${getPerformanceScore('LCP', avgMetrics.LCP).color === 'green'
                 ? 'bg-green-100 text-green-700'
                 : getPerformanceScore('LCP', avgMetrics.LCP).color === 'yellow'
-                ? 'bg-yellow-100 text-yellow-700'
-                : 'bg-red-100 text-red-700'
-            }`}>
+                  ? 'bg-yellow-100 text-yellow-700'
+                  : 'bg-red-100 text-red-700'
+              }`}>
               {getPerformanceScore('LCP', avgMetrics.LCP).rating}
             </div>
           </div>
@@ -231,13 +225,12 @@ const PerformanceAnalytics: React.FC = () => {
             <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
               <Clock className="w-6 h-6 text-purple-600" />
             </div>
-            <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-              getPerformanceScore('FCP', avgMetrics.FCP).color === 'green'
+            <div className={`px-3 py-1 rounded-full text-xs font-medium ${getPerformanceScore('FCP', avgMetrics.FCP).color === 'green'
                 ? 'bg-green-100 text-green-700'
                 : getPerformanceScore('FCP', avgMetrics.FCP).color === 'yellow'
-                ? 'bg-yellow-100 text-yellow-700'
-                : 'bg-red-100 text-red-700'
-            }`}>
+                  ? 'bg-yellow-100 text-yellow-700'
+                  : 'bg-red-100 text-red-700'
+              }`}>
               {getPerformanceScore('FCP', avgMetrics.FCP).rating}
             </div>
           </div>
@@ -255,13 +248,12 @@ const PerformanceAnalytics: React.FC = () => {
             <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
               <AlertTriangle className="w-6 h-6 text-orange-600" />
             </div>
-            <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-              getPerformanceScore('CLS', avgMetrics.CLS).color === 'green'
+            <div className={`px-3 py-1 rounded-full text-xs font-medium ${getPerformanceScore('CLS', avgMetrics.CLS).color === 'green'
                 ? 'bg-green-100 text-green-700'
                 : getPerformanceScore('CLS', avgMetrics.CLS).color === 'yellow'
-                ? 'bg-yellow-100 text-yellow-700'
-                : 'bg-red-100 text-red-700'
-            }`}>
+                  ? 'bg-yellow-100 text-yellow-700'
+                  : 'bg-red-100 text-red-700'
+              }`}>
               {getPerformanceScore('CLS', avgMetrics.CLS).rating}
             </div>
           </div>
