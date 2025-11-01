@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const ordersController = require('../controllers/ordersController');
-const authMiddleware = require('../middleware/auth');
+const { authenticate } = require('../controllers/authController');
 
 // All order routes require authentication
-router.use(authMiddleware);
+router.use(authenticate);
 
 // Create new order
 router.post('/', ordersController.createOrder);
