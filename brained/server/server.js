@@ -7,7 +7,8 @@ const http = require('http');
 const { Server } = require('socket.io');
 
 const app = express();
-const server = http.createServer(app);
+// Increase header size limit to prevent 431 errors
+const server = http.createServer({ maxHeaderSize: 16384 }, app);
 
 // middleware - increase payload limit for image uploads (base64 encoded images can be large)
 app.use(express.json({ limit: '50mb' }));
@@ -81,7 +82,7 @@ const rateLimiter = require('./middleware/rateLimiter');
 const deviceInfo = require('./middleware/deviceInfo');
 
 // Apply rate limiter globally (you can scope it to /api if preferred)
-app.use(rateLimiter);
+// app.use(rateLimiter); // Disabled rate limiting
 
 app.use('/api/auth', authRoutes);
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, Outlet } from 'react-router-dom';
 import { useState } from 'react';
 import trackingClient from '../../services/trackingClient';
+import api from '../../services/api';
 
 const AdminLayout: React.FC = () => {
   // local recording control component placed here so it has access to UI state
@@ -11,24 +12,17 @@ const AdminLayout: React.FC = () => {
 
     // load current server flag
     React.useEffect(() => {
-      fetch('/api/analytics/recording', { credentials: 'include' })
-        .then((r) => r.json())
-        .then((d) => setIsRec(!!d.enabled))
-        .catch(() => {});
+      api.get('/api/analytics/recording')
+        .then((r) => setIsRec(!!r.data.enabled))
+        .catch(() => { });
     }, []);
 
     const toggle = async () => {
       setLoading(true);
       try {
-        const res = await fetch('/api/analytics/recording', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ enabled: !isRec }),
-        });
-        const data = await res.json();
-        setIsRec(!!data.enabled);
-        if (data.enabled) trackingClient.startRecording(); else trackingClient.stopRecording();
+        const res = await api.post('/api/analytics/recording', { enabled: !isRec });
+        setIsRec(!!res.data.enabled);
+        if (res.data.enabled) trackingClient.startRecording(); else trackingClient.stopRecording();
       } catch (e) {
         console.error(e);
       } finally { setLoading(false); }

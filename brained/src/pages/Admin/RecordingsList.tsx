@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { 
-  Play, 
-  AlertCircle, 
-  Clock, 
-  MousePointer2, 
+import {
+  Play,
+  AlertCircle,
+  Clock,
+  MousePointer2,
   MonitorPlay,
   Filter,
   Search,
@@ -96,11 +96,10 @@ const RecordingsList: React.FC = () => {
 
           <button
             onClick={() => setFilterErrors(!filterErrors)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filterErrors
-                ? 'bg-red-100 text-red-700 border border-red-300'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filterErrors
+              ? 'bg-red-100 text-red-700 border border-red-300'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
           >
             <AlertCircle className="w-4 h-4 inline mr-2" />
             Errors Only
