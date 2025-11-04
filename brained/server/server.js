@@ -110,6 +110,7 @@ io.on('connection', (socket) => {
 // routes
 const authRoutes = require('./routes/auth');
 const analyticsRoutes = require('./routes/analytics');
+const trackingRoutes = require('./routes/trackingRoutes');
 const productsRoutes = require('./routes/products');
 const sessionsRoutes = require('./routes/sessions');
 const dashboardRoutes = require('./routes/dashboard');
@@ -132,6 +133,9 @@ app.get('/api/health', (req, res) => {
 
 // Mount analytics routes with deviceInfo middleware to capture UA data
 app.use('/api/analytics', deviceInfo, analyticsRoutes);
+
+// tracking routes for session recording, heatmaps, and interactions
+app.use('/api/tracking', deviceInfo, trackingRoutes);
 
 // sessions API
 app.use('/api/sessions', sessionsRoutes);

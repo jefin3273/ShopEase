@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import trackingClient from '../../services/trackingClient';
+import analyticsManager from '../../services/AnalyticsManager';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
@@ -59,6 +59,13 @@ export default function Checkout() {
     setLoading(true);
     setError('');
 
+    // Track checkout initiation
+    analyticsManager.trackCustomEvent('begin_checkout', {
+      itemCount: items.length,
+      subtotal,
+      total,
+    });
+
     try {
       const token = localStorage.getItem('token');
       
@@ -105,12 +112,18 @@ export default function Checkout() {
       );
 
       // Track purchase event
-      trackingClient.trackCustomEvent('purchase', {
+      analyticsManager.trackCustomEvent('purchase', {
         orderNumber: response.data.order.orderNumber,
         total,
         currency: 'USD',
         itemCount: items.length,
-        source: 'checkout_page',
+        items: items.map(item => ({
+          productId: item.id,
+          title: item.title,
+          price: item.price,
+          quantity: item.quantity,
+          category: item.category,
+        })),
       });
 
       // Clear cart
@@ -125,9 +138,11 @@ export default function Checkout() {
     } catch (err: any) {
       console.error('Error creating order:', err);
       setError(err.response?.data?.message || 'Failed to process order. Please try again.');
-      trackingClient.trackCustomEvent('checkout_error', {
+      analyticsManager.trackCustomEvent('checkout_error', {
         error: err.message,
+        errorCode: err.response?.status,
         total,
+        itemCount: items.length,
       });
     } finally {
       setLoading(false);

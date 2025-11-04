@@ -1,9 +1,30 @@
-import React, { useState } from 'react';
-import { Copy, Check, Code, Zap } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Copy, Check, Code, Zap, Play, Pause } from 'lucide-react';
 
 const TrackingSetup: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [projectId, setProjectId] = useState('default');
+  const [trackingEnabled, setTrackingEnabled] = useState(true);
+
+  useEffect(() => {
+    // Load tracking state from localStorage
+    const enabled = localStorage.getItem('tracking_enabled') !== 'false';
+    setTrackingEnabled(enabled);
+  }, []);
+
+  const toggleTracking = () => {
+    const newState = !trackingEnabled;
+    setTrackingEnabled(newState);
+    localStorage.setItem('tracking_enabled', String(newState));
+    
+    // Show notification
+    const message = newState 
+      ? '🎯 Tracking Enabled - All non-admin sessions are now being recorded'
+      : '⏸️ Tracking Paused - Session recording stopped';
+    
+    // You could use a toast notification library here
+    alert(message);
+  };
 
   const apiUrl = (import.meta as any).env?.VITE_API_BASE || (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
   
@@ -37,9 +58,54 @@ PagePulse.page('Product Page', {
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Tracking Setup</h1>
-        <p className="text-gray-600">Install PagePulse on your website to start tracking analytics</p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Tracking Setup</h1>
+          <p className="text-gray-600">Control and monitor PagePulse analytics tracking</p>
+        </div>
+        
+        {/* Tracking Control Toggle */}
+        <button
+          onClick={toggleTracking}
+          className={`flex items-center gap-3 px-6 py-3 rounded-lg font-semibold transition-all shadow-lg ${
+            trackingEnabled
+              ? 'bg-green-500 hover:bg-green-600 text-white'
+              : 'bg-gray-500 hover:bg-gray-600 text-white'
+          }`}
+        >
+          {trackingEnabled ? (
+            <>
+              <Play className="w-5 h-5" />
+              Tracking Active
+            </>
+          ) : (
+            <>
+              <Pause className="w-5 h-5" />
+              Tracking Paused
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Status Banner */}
+      <div className={`mb-6 p-4 rounded-lg border ${
+        trackingEnabled 
+          ? 'bg-green-50 border-green-200 text-green-800'
+          : 'bg-yellow-50 border-yellow-200 text-yellow-800'
+      }`}>
+        <div className="flex items-center gap-2">
+          <div className={`w-3 h-3 rounded-full ${trackingEnabled ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`} />
+          <p className="font-medium">
+            {trackingEnabled 
+              ? '✅ All non-admin user sessions are being tracked and recorded'
+              : '⏸️ Tracking is currently paused - No data is being collected'}
+          </p>
+        </div>
+        <p className="text-sm mt-2 ml-5">
+          {trackingEnabled
+            ? 'View real-time analytics, session recordings, and heatmaps in the Analytics dashboard'
+            : 'Click "Tracking Active" to resume data collection'}
+        </p>
       </div>
 
       {/* Project ID Input */}

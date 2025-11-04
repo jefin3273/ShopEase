@@ -1,4 +1,5 @@
 import { Routes, Route, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import HomePage from "./components/pages/HomePage";
 // import LandingPage from "./pages/LandingPage";
 import LoginPage from "./login/page";
@@ -30,10 +31,64 @@ import CohortAnalysis from "./pages/Admin/CohortAnalysis";
 import ABTesting from "./pages/Admin/ABTesting";
 import SearchResults from "./components/pages/SearchResults";
 import OrderSuccess from "./components/pages/OrderSuccess";
+// Analytics Manager for comprehensive tracking
+import analyticsManager from "./services/AnalyticsManager";
+import { useAuth } from "./context/AuthContext";
 
 function App() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
+  
+  // Get auth context to determine if user is admin
+  let auth: any = null;
+  try {
+    auth = useAuth();
+  } catch (e) {
+    auth = null;
+  }
+
+  // Initialize analytics tracking on app mount
+  useEffect(() => {
+    // Check if tracking is enabled (admin can toggle this)
+    const trackingEnabled = localStorage.getItem('tracking_enabled') !== 'false';
+    
+    // Check if user has opted out of tracking
+    const hasOptedOut = localStorage.getItem('analytics_opt_out') === 'true';
+    
+    // Don't track admin users
+    const isAdmin = auth?.user?.role === 'admin';
+    
+    if (!trackingEnabled || hasOptedOut || isAdmin) {
+      analyticsManager.destroy();
+      return;
+    }
+
+    // If user is logged in and not admin, identify them
+    if (auth?.user && !isAdmin) {
+      analyticsManager.identify(auth.user.id, {
+        email: auth.user.email,
+        name: auth.user.name,
+        role: auth.user.role || 'customer',
+      });
+    }
+
+    // Cleanup on unmount
+    return () => {
+      // Flush any remaining events before unmount
+      analyticsManager.destroy();
+    };
+  }, [auth?.user]);
+
+  // Track page views on route change (but not for admin routes or admin users)
+  useEffect(() => {
+    const isAdmin = auth?.user?.role === 'admin';
+    const trackingEnabled = localStorage.getItem('tracking_enabled') !== 'false';
+    
+    // Don't track admin pages or admin users
+    if (!isAdminRoute && !isAdmin && trackingEnabled) {
+      analyticsManager.trackPageView();
+    }
+  }, [location, isAdminRoute, auth?.user]);
 
   return (
     <CartProvider>

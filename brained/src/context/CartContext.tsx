@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import trackingClient from '../services/trackingClient';
+import analyticsManager from '../services/AnalyticsManager';
 
 export interface CartItem {
   id: string;
@@ -50,31 +50,42 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return [...prev, { ...item, quantity: qty }];
     });
-    trackingClient.trackCustomEvent('add_to_cart', {
+    analyticsManager.trackCustomEvent('add_to_cart', {
       productId: item.id,
+      title: item.title,
       price: item.price,
       category: item.category,
       quantity: qty,
-      page: 'context',
     });
   };
 
   const removeItem: CartContextValue['removeItem'] = (id) => {
     const item = items.find((i) => i.id === id);
     setItems((prev) => prev.filter((i) => i.id !== id));
-    trackingClient.trackCustomEvent('remove_from_cart', {
+    analyticsManager.trackCustomEvent('remove_from_cart', {
       productId: id,
       price: item?.price,
       category: item?.category,
+      title: item?.title,
     });
   };
 
   const updateQuantity: CartContextValue['updateQuantity'] = (id, quantity) => {
+    const item = items.find((i) => i.id === id);
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, quantity } : i)));
-    trackingClient.trackCustomEvent('update_cart_quantity', { productId: id, quantity });
+    analyticsManager.trackCustomEvent('update_cart_quantity', { 
+      productId: id, 
+      quantity,
+      title: item?.title,
+      price: item?.price,
+    });
   };
 
   const clear = () => {
+    analyticsManager.trackCustomEvent('clear_cart', {
+      itemCount: items.length,
+      totalValue: subtotal,
+    });
     setItems([]);
   };
 

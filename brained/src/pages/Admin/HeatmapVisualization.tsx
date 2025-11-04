@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import api from '../../services/api';
+import axios from 'axios';
 import {
   MousePointer2,
   ScrollText,
@@ -7,24 +7,34 @@ import {
   RefreshCw,
   Download,
   Eye,
-  Filter
+  Filter,
+  Monitor,
+  Smartphone
 } from 'lucide-react';
+
+const API_URL = (import.meta as any).env?.VITE_API_BASE || (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
 
 interface HeatmapPoint {
   x: number;
   y: number;
-  vw: number;
-  vh: number;
-  intensity: number;
+  value: number;
 }
 
-type HeatmapType = 'click' | 'scroll' | 'hover';
+interface HeatmapMetadata {
+  totalInteractions: number;
+  uniqueUsers: number;
+}
+
+type HeatmapType = 'click' | 'scroll' | 'hover' | 'mousemove';
+type DeviceType = 'all' | 'desktop' | 'mobile' | 'tablet';
 
 const HeatmapVisualization: React.FC = () => {
   const [heatmapData, setHeatmapData] = useState<HeatmapPoint[]>([]);
+  const [metadata, setMetadata] = useState<HeatmapMetadata | null>(null);
   const [loading, setLoading] = useState(false);
-  const [pageURL, setPageURL] = useState('');
+  const [pageURL, setPageURL] = useState('/products');
   const [heatmapType, setHeatmapType] = useState<HeatmapType>('click');
+  const [deviceType, setDeviceType] = useState<DeviceType>('all');
   const [showOverlay, setShowOverlay] = useState(true);
   const [intensity, setIntensity] = useState(0.6);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -36,6 +46,13 @@ const HeatmapVisualization: React.FC = () => {
     }
   }, [heatmapData, intensity, showOverlay]);
 
+  useEffect(() => {
+    // Auto-fetch on mount with default page
+    if (pageURL) {
+      fetchHeatmapData();
+    }
+  }, []);
+
   const fetchHeatmapData = async () => {
     if (!pageURL) {
       alert('Please enter a page URL');
@@ -44,19 +61,25 @@ const HeatmapVisualization: React.FC = () => {
 
     try {
       setLoading(true);
-      const response = await api.get('/api/analytics/heatmap', {
-        params: {
-          projectId: 'default',
-          pageURL,
-          eventType: heatmapType,
-        },
+      const params: any = {
+        pageURL: pageURL.startsWith('http') ? pageURL : `${window.location.origin}${pageURL}`,
+        type: heatmapType,
+      };
+      
+      if (deviceType !== 'all') {
+        params.device = deviceType;
+      }
+
+      const response = await axios.get(`${API_URL}/api/tracking/heatmap`, {
+        params,
+        withCredentials: true,
       });
 
-      setHeatmapData(response.data.heatmapData);
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
+      setHeatmapData(response.data.heatmapData || []);
+      setMetadata(response.data.metadata || null);
+    } catch (err: any) {
       console.error('Failed to fetch heatmap data', err);
-      alert(error.response?.data?.message || 'Failed to fetch heatmap data');
+      alert(err.response?.data?.message || 'Failed to fetch heatmap data');
     } finally {
       setLoading(false);
     }
@@ -80,16 +103,16 @@ const HeatmapVisualization: React.FC = () => {
     if (!showOverlay || heatmapData.length === 0) return;
 
     // Find max intensity for normalization
-    const maxIntensity = Math.max(...heatmapData.map(p => p.intensity || 1));
+    const maxIntensity = Math.max(...heatmapData.map(p => p.value || 1));
 
     // Draw each point
     heatmapData.forEach(point => {
-      // Convert viewport percentage to canvas pixels
-      const x = (point.vw / 100) * canvas.width;
-      const y = (point.vh / 100) * canvas.height;
+      // Use absolute coordinates from backend
+      const x = point.x;
+      const y = point.y;
 
       // Normalize intensity
-      const normalizedIntensity = (point.intensity || 1) / maxIntensity;
+      const normalizedIntensity = (point.value || 1) / maxIntensity;
 
       // Create radial gradient
       const gradient = ctx.createRadialGradient(x, y, 0, x, y, 50);
@@ -195,19 +218,41 @@ const HeatmapVisualization: React.FC = () => {
               Heatmap Type
             </label>
             <div className="flex gap-2">
-              {(['click', 'scroll', 'hover'] as HeatmapType[]).map((type) => (
+              {(['click', 'scroll', 'hover', 'mousemove'] as HeatmapType[]).map((type) => (
                 <button
                   key={type}
                   onClick={() => setHeatmapType(type)}
                   className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${heatmapType === type
-                      ? `bg-gradient-to-r ${getHeatmapColor()} text-white shadow-lg`
+                      ? `bg-linear-to-r ${getHeatmapColor()} text-white shadow-lg`
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                 >
                   {type === 'click' && <MousePointer2 className="w-5 h-5" />}
                   {type === 'scroll' && <ScrollText className="w-5 h-5" />}
                   {type === 'hover' && <Activity className="w-5 h-5" />}
-                  {type.charAt(0).toUpperCase() + type.slice(1)} Heatmap
+                  {type === 'mousemove' && <Activity className="w-5 h-5" />}
+                  {type === 'mousemove' ? 'Move' : type.charAt(0).toUpperCase() + type.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Device Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Device Type
+            </label>
+            <div className="flex gap-2">
+              {(['all', 'desktop', 'mobile', 'tablet'] as DeviceType[]).map((device) => (
+                <button
+                  key={device}
+                  onClick={() => setDeviceType(device)}
+                  className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all ${deviceType === device
+                      ? 'bg-blue-600 text-white shadow-lg'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                >
+                  {device.charAt(0).toUpperCase() + device.slice(1)}
                 </button>
               ))}
             </div>
@@ -255,29 +300,29 @@ const HeatmapVisualization: React.FC = () => {
       </div>
 
       {/* Stats */}
-      {heatmapData.length > 0 && (
+      {heatmapData.length > 0 && metadata && (
         <div className="grid grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-lg shadow p-4">
-            <div className={`w-12 h-12 bg-gradient-to-r ${getHeatmapColor()} rounded-lg flex items-center justify-center mb-3`}>
+            <div className={`w-12 h-12 bg-linear-to-r ${getHeatmapColor()} rounded-lg flex items-center justify-center mb-3`}>
               {getHeatmapIcon()}
             </div>
-            <p className="text-sm text-gray-500 mb-1">Total {heatmapType} Events</p>
-            <p className="text-2xl font-bold text-gray-900">{heatmapData.reduce((sum, p) => sum + (p.intensity || 1), 0)}</p>
+            <p className="text-sm text-gray-500 mb-1">Total Interactions</p>
+            <p className="text-2xl font-bold text-gray-900">{metadata.totalInteractions}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-sm text-gray-500 mb-1">Unique Points</p>
-            <p className="text-2xl font-bold text-blue-600">{heatmapData.length}</p>
+            <p className="text-sm text-gray-500 mb-1">Unique Users</p>
+            <p className="text-2xl font-bold text-blue-600">{metadata.uniqueUsers}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-sm text-gray-500 mb-1">Peak Intensity</p>
+            <p className="text-sm text-gray-500 mb-1">Heat Points</p>
             <p className="text-2xl font-bold text-orange-600">
-              {Math.max(...heatmapData.map(p => p.intensity || 1))}
+              {heatmapData.length}
             </p>
           </div>
           <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-sm text-gray-500 mb-1">Avg Intensity</p>
+            <p className="text-sm text-gray-500 mb-1">Peak Value</p>
             <p className="text-2xl font-bold text-green-600">
-              {(heatmapData.reduce((sum, p) => sum + (p.intensity || 1), 0) / heatmapData.length).toFixed(1)}
+              {Math.max(...heatmapData.map(p => p.value || 1))}
             </p>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../services/api';
+import axios from 'axios';
 import {
   Play,
   AlertCircle,
@@ -11,6 +11,8 @@ import {
   Search,
   RefreshCw
 } from 'lucide-react';
+
+const API_URL = (import.meta as any).env?.VITE_API_BASE || (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
 
 interface Recording {
   sessionId: string;
@@ -28,6 +30,8 @@ interface Recording {
     totalScrolls?: number;
   };
   hasErrors: boolean;
+  entryURL?: string;
+  exitURL?: string;
 }
 
 const RecordingsList: React.FC = () => {
@@ -37,26 +41,34 @@ const RecordingsList: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [filterErrors, setFilterErrors] = useState(false);
   const [searchUserId, setSearchUserId] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     fetchRecordings();
-  }, [filterErrors, searchUserId]);
+  }, [filterErrors, searchUserId, currentPage]);
 
   const fetchRecordings = async () => {
     try {
       setLoading(true);
-      const params: Record<string, string> = { limit: '50' };
+      const params: Record<string, any> = { 
+        page: currentPage,
+        limit: 20,
+      };
       if (filterErrors) params.hasErrors = 'true';
       if (searchUserId) params.userId = searchUserId;
 
-      const response = await api.get('/api/analytics/recordings', {
+      const response = await axios.get(`${API_URL}/api/tracking/sessions`, {
         params,
+        withCredentials: true,
       });
-      setRecordings(response.data.recordings);
+      
+      setRecordings(response.data.sessions || []);
+      setTotalPages(response.data.pagination?.totalPages || 1);
       setError(null);
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || 'Failed to load recordings');
+    } catch (err: any) {
+      console.error('Failed to fetch recordings:', err);
+      setError(err.response?.data?.message || 'Failed to load recordings');
     } finally {
       setLoading(false);
     }
@@ -148,14 +160,15 @@ const RecordingsList: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {recordings.map((recording) => (
-            <div
-              key={recording.sessionId}
-              className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all cursor-pointer border border-gray-100 hover:border-blue-300 overflow-hidden group"
-              onClick={() => navigate(`/admin/analytics/recordings/${recording.sessionId}`)}
-            >
-              {/* Preview Area */}
+        <div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {recordings.map((recording) => (
+              <div
+                key={recording.sessionId}
+                className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all cursor-pointer border border-gray-100 hover:border-blue-300 overflow-hidden group"
+                onClick={() => navigate(`/admin/analytics/recordings/${recording.sessionId}`)}
+              >
+                {/* Preview Area */}
               <div className="relative bg-gradient-to-br from-blue-500 to-purple-600 aspect-video flex items-center justify-center">
                 <MonitorPlay className="w-16 h-16 text-white opacity-70 group-hover:opacity-100 transition-opacity" />
                 <div className="absolute top-3 right-3">
@@ -218,6 +231,30 @@ const RecordingsList: React.FC = () => {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-8 flex items-center justify-center gap-2">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span className="px-4 py-2 text-sm text-gray-600">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        )}
         </div>
       )}
     </div>
