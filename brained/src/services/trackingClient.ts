@@ -249,14 +249,18 @@ class TrackingClient {
     const payload = {
       sessionId: this.sessionId,
       userId: this.userId || 'anonymous',
-      ...eventData,
+      projectId: 'default',
+      eventType: eventData.eventType,
+      eventName: eventData.eventName,
+      pageURL: eventData.pageURL,
       metadata: {
         ...eventData.metadata,
         ...this.superProperties,
       },
     };
 
-    axios.post(`${API_URL}/api/analytics/events`, payload).catch((err) => {
+    // Use the correct tracking endpoint
+    axios.post(`${API_URL}/api/tracking/interactions`, payload).catch((err) => {
       console.error('Failed to capture event', err);
     });
   }
