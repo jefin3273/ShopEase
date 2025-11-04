@@ -9,6 +9,7 @@ const UserInteraction = require('../models/UserInteraction');
 const analyticsService = require('../services/analyticsService');
 const AppSettings = require('../models/AppSettings');
 const { authenticate, authorize } = require('../controllers/authController');
+const { enrichWithUserNames } = require('../utils/userEnricher');
 
 // sanitize incoming metadata to avoid storing sensitive info
 function sanitize(obj) {
@@ -30,10 +31,10 @@ router.post('/events', async (req, res) => {
     // prefer deviceInfo from middleware (parsed UA) but allow client-supplied deviceInfo
     const deviceInfo = req.deviceInfo || req.body.deviceInfo;
     const cleanMeta = sanitize(metadata || {});
-    
+
     // Save to EventAnalytics (legacy model)
     const doc = await EventAnalytics.create({ eventType, element, pageURL, timestamp, deviceInfo, metadata: cleanMeta });
-    
+
     // Also capture to our custom analytics service
     const distinctId = userId || req.userId || req.ip || 'anonymous';
     analyticsService.captureEvent(distinctId, sessionId, {
@@ -44,7 +45,7 @@ router.post('/events', async (req, res) => {
       device: deviceInfo,
       projectId: 'default',
     }).catch(e => console.error('Analytics service error:', e));
-    
+
     res.status(201).json(doc);
   } catch (err) {
     console.error(err);
@@ -113,7 +114,7 @@ router.post('/performance', async (req, res) => {
     const { pageURL, TTFB, LCP, FCP, CLS, jsErrors, timestamp, sessionId } = req.body;
     const deviceInfo = req.deviceInfo || req.body.deviceInfo;
     const doc = await PerformanceMetrics.create({ pageURL, TTFB, LCP, FCP, CLS, jsErrors, timestamp, deviceInfo });
-    
+
     // Track performance metrics with custom analytics
     const userId = req.userId || req.body.userId || 'anonymous';
     await analyticsService.captureEvent(userId, sessionId, {
@@ -129,7 +130,7 @@ router.post('/performance', async (req, res) => {
         timestamp
       }
     });
-    
+
     res.status(201).json(doc);
   } catch (err) {
     console.error(err);
@@ -330,14 +331,16 @@ router.get('/performance/summary', async (req, res) => {
     // average metrics grouped by pageURL
     const agg = await PerformanceMetrics.aggregate([
       { $match: match },
-      { $group: {
+      {
+        $group: {
           _id: '$pageURL',
           avgTTFB: { $avg: '$TTFB' },
           avgLCP: { $avg: '$LCP' },
           avgFCP: { $avg: '$FCP' },
           avgCLS: { $avg: '$CLS' },
           count: { $sum: 1 }
-      } },
+        }
+      },
       { $project: { _id: 0, pageURL: '$_id', avgTTFB: 1, avgLCP: 1, avgFCP: 1, avgCLS: 1, count: 1 } },
       { $sort: { count: -1 } }
     ]);
@@ -505,7 +508,7 @@ router.post('/identify', async (req, res) => {
 router.get('/recordings', authenticate, authorize(['admin']), async (req, res) => {
   try {
     const { projectId = 'default', limit = 50, hasErrors, userId } = req.query;
-    
+
     const options = {
       limit: parseInt(limit),
       hasErrors: hasErrors === 'true',
@@ -513,7 +516,11 @@ router.get('/recordings', authenticate, authorize(['admin']), async (req, res) =
     };
 
     const recordings = await analyticsService.listRecordings(projectId, options);
-    res.json({ recordings });
+
+    // Enrich recordings with user names
+    const enrichedRecordings = await enrichWithUserNames(recordings);
+
+    res.json({ recordings: enrichedRecordings });
   } catch (err) {
     console.error('Failed to list recordings', err);
     res.status(500).json({ message: 'Failed to list recordings' });
@@ -525,12 +532,15 @@ router.get('/recordings/:sessionId', authenticate, authorize(['admin']), async (
   try {
     const { sessionId } = req.params;
     const recording = await analyticsService.getSessionRecording(sessionId);
-    
+
     if (!recording) {
       return res.status(404).json({ message: 'Recording not found' });
     }
 
-    res.json({ recording });
+    // Enrich recording with user name
+    const enrichedRecording = (await enrichWithUserNames([recording]))[0];
+
+    res.json({ recording: enrichedRecording });
   } catch (err) {
     console.error('Failed to get recording', err);
     res.status(500).json({ message: 'Failed to get recording' });
@@ -541,7 +551,7 @@ router.get('/recordings/:sessionId', authenticate, authorize(['admin']), async (
 router.get('/heatmap', authenticate, authorize(['admin']), async (req, res) => {
   try {
     const { projectId = 'default', pageURL, eventType = 'click' } = req.query;
-    
+
     if (!pageURL) {
       return res.status(400).json({ message: 'pageURL required' });
     }

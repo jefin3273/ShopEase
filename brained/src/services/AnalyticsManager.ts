@@ -29,7 +29,7 @@ class AnalyticsManager {
   private sessionId: string;
   private userId: string | null = null;
   private projectId: string = 'default';
-  
+
   // Event batching
   private eventQueue: AnalyticsEvent[] = [];
   private batchSize: number = 20;
@@ -103,6 +103,12 @@ class AnalyticsManager {
       return;
     }
 
+    // Don't track admin dashboard activities
+    if (this.isAdminPath()) {
+      console.log('Analytics tracking disabled for admin dashboard');
+      return;
+    }
+
     this.setupEventListeners();
     this.startFlushTimer();
     this.startEngagementTracking();
@@ -110,7 +116,7 @@ class AnalyticsManager {
 
     // Intercept console methods
     this.interceptConsole();
-    
+
     // Intercept network requests
     this.interceptNetworkRequests();
 
@@ -118,6 +124,12 @@ class AnalyticsManager {
     if (this.config.enableSessionRecording) {
       this.startSessionRecording();
     }
+  }
+
+  private isAdminPath(): boolean {
+    if (typeof window === 'undefined') return false;
+    const path = window.location.pathname;
+    return path.startsWith('/admin') || path.startsWith('/login');
   }
 
   private getOrCreateSessionId(): string {
@@ -182,7 +194,7 @@ class AnalyticsManager {
 
   private handleClick(e: MouseEvent): void {
     const target = e.target as HTMLElement;
-    
+
     this.queueEvent({
       eventType: 'click',
       eventName: 'click',
@@ -211,7 +223,7 @@ class AnalyticsManager {
   private handleMouseMove(e: MouseEvent): void {
     const now = Date.now();
     if (now - this.lastMouseMove < this.mouseMoveThrottle) return;
-    
+
     this.lastMouseMove = now;
 
     if (this.config.enableHeatmaps) {
@@ -233,7 +245,7 @@ class AnalyticsManager {
   private handleScroll(): void {
     const now = Date.now();
     if (now - this.lastScroll < this.scrollThrottle) return;
-    
+
     this.lastScroll = now;
 
     const scrollDepth = this.getScrollDepth();
@@ -256,7 +268,7 @@ class AnalyticsManager {
 
   private handleMouseOver(e: MouseEvent): void {
     const target = e.target as HTMLElement;
-    
+
     // Skip if already tracking this element
     if (this.hoverStartTime.has(target)) return;
 
@@ -533,8 +545,8 @@ class AnalyticsManager {
     // Intercept fetch
     const originalFetch = window.fetch;
     const analyticsManager = this;
-    
-    window.fetch = async function(...args: Parameters<typeof fetch>) {
+
+    window.fetch = async function (...args: Parameters<typeof fetch>) {
       const startTime = Date.now();
       const url = typeof args[0] === 'string' ? args[0] : (args[0] as Request).url;
       const method = args[1]?.method || 'GET';
@@ -598,7 +610,7 @@ class AnalyticsManager {
     const originalXHROpen = XMLHttpRequest.prototype.open;
     const originalXHRSend = XMLHttpRequest.prototype.send;
 
-    XMLHttpRequest.prototype.open = function(
+    XMLHttpRequest.prototype.open = function (
       method: string,
       url: string | URL,
       async?: boolean,
@@ -608,13 +620,13 @@ class AnalyticsManager {
       (this as any)._analyticsMethod = method;
       (this as any)._analyticsUrl = url;
       (this as any)._analyticsStartTime = Date.now();
-      
+
       // Forward the call to the original open with all parameters (explicitly passing undefined for missing optionals)
       // Use apply with any-typed array to satisfy TypeScript's expected arity for the original function.
       return originalXHROpen.apply(this, [method, url, async, username, password] as any);
     };
 
-    XMLHttpRequest.prototype.send = function(body?: Document | XMLHttpRequestBodyInit | null) {
+    XMLHttpRequest.prototype.send = function (body?: Document | XMLHttpRequestBodyInit | null) {
       const xhr = this;
       const startTime = (xhr as any)._analyticsStartTime;
 
@@ -730,9 +742,9 @@ class AnalyticsManager {
       clearInterval((this as any).recordingFlushInterval);
     }
 
-    // Mark session as complete
-    axios.post(`${API_URL}/api/tracking/session/${this.sessionId}/complete`).catch((err) => {
-      console.error('Failed to complete session:', err);
+    // Mark session as complete (silently fail if session doesn't exist)
+    axios.post(`${API_URL}/api/tracking/session/${this.sessionId}/complete`).catch(() => {
+      // Session may not exist yet, that's ok
     });
 
     console.log('Session recording stopped');
@@ -753,7 +765,7 @@ class AnalyticsManager {
     const events = [...this.recordingEvents];
     const consoleLogs = [...this.consoleLogs];
     const networkRequests = [...this.networkRequests];
-    
+
     this.recordingEvents = [];
     this.consoleLogs = [];
     this.networkRequests = [];
@@ -786,8 +798,13 @@ class AnalyticsManager {
 
   // Public API
   public trackPageView(url?: string): void {
+    // Don't track admin pages
+    if (this.isAdminPath()) {
+      return;
+    }
+
     this.pageLoadTime = Date.now();
-    
+
     this.queueEvent({
       eventType: 'pageview',
       eventName: 'pageview',
@@ -805,6 +822,11 @@ class AnalyticsManager {
   }
 
   public trackCustomEvent(eventName: string, properties?: Record<string, any>): void {
+    // Don't track admin pages
+    if (this.isAdminPath()) {
+      return;
+    }
+
     this.queueEvent({
       eventType: 'custom',
       eventName,
@@ -818,6 +840,12 @@ class AnalyticsManager {
   }
 
   public identify(userId: string, properties?: Record<string, any>): void {
+    // Don't identify admin users or on admin paths
+    if (this.isAdminPath() || properties?.role === 'admin') {
+      console.log('Skipping identification for admin user');
+      return;
+    }
+
     this.userId = userId;
     localStorage.setItem('analytics_user_id', userId);
 

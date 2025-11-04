@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { enrichWithUserNames } = require('../utils/userEnricher');
 
 // Models
 const SessionRecording = require('../models/SessionRecording');
@@ -17,12 +18,12 @@ const FeatureFlag = require('../models/FeatureFlag');
 
 // Category map: define which model handles which category
 const CATEGORY_MAP = {
-  sessionRecordings: { model: SessionRecording, listFields: ['sessionId','startedAt','completedAt','events'] },
-  sessions: { model: Session, listFields: ['sessionId','userId','startedAt','completedAt'] },
-  interactions: { model: UserInteraction, listFields: ['eventType','eventName','pageURL','timestamp'] },
-  pageViews: { model: PageView, listFields: ['url','title','timestamp','referrer'] },
-  userEvents: { model: UserEvent, listFields: ['name','properties','timestamp'] },
-  heatmaps: { model: HeatmapData, listFields: ['pageURL','x','y','timestamp'] },
+  sessionRecordings: { model: SessionRecording, listFields: ['sessionId', 'startedAt', 'completedAt', 'events'] },
+  sessions: { model: Session, listFields: ['sessionId', 'userId', 'startedAt', 'completedAt'] },
+  interactions: { model: UserInteraction, listFields: ['eventType', 'eventName', 'pageURL', 'timestamp'] },
+  pageViews: { model: PageView, listFields: ['url', 'title', 'timestamp', 'referrer'] },
+  userEvents: { model: UserEvent, listFields: ['name', 'properties', 'timestamp'] },
+  heatmaps: { model: HeatmapData, listFields: ['pageURL', 'x', 'y', 'timestamp'] },
   eventAnalytics: { model: EventAnalytics },
   performanceMetrics: { model: PerformanceMetrics },
   funnels: { model: Funnel },
@@ -54,7 +55,10 @@ router.get('/:category', async (req, res) => {
       model.countDocuments({}),
     ]);
 
-    res.json({ items, total, page: Number(page), limit: Number(limit) });
+    // Enrich items with user names if they have userId field
+    const enrichedItems = await enrichWithUserNames(items);
+
+    res.json({ items: enrichedItems, total, page: Number(page), limit: Number(limit) });
   } catch (err) {
     console.error('List analytics admin error:', err);
     res.status(err.status || 500).json({ message: err.message || 'Failed to list analytics items' });

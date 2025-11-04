@@ -3,12 +3,16 @@ import { Minus, Plus, ShoppingBag, Trash2, ArrowLeft, Tag, Lock } from "lucide-r
 import trackingClient from "../../services/trackingClient";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
+import { useCustomerOnly } from "../../hooks/useRouteProtection";
 import { useEffect } from "react";
 
 export default function Cart() {
   const navigate = useNavigate();
   const { items, removeItem, updateQuantity, clear, subtotal, totalItems } = useCart();
-  
+
+  // Protect this route - admins should not access cart
+  useCustomerOnly();
+
   let auth: any = null;
   try { auth = useAuth(); } catch (e) { auth = null; }
   const isLoggedIn = !!(auth && auth.user);
@@ -33,17 +37,17 @@ export default function Cart() {
   const handleCheckout = () => {
     if (!isLoggedIn) {
       // Not logged in - redirect to login with return URL to checkout
-      trackingClient.trackCustomEvent('checkout_login_required', { 
+      trackingClient.trackCustomEvent('checkout_login_required', {
         total,
-        itemCount: totalItems 
+        itemCount: totalItems
       });
       navigate('/login', { state: { from: '/checkout' } });
     } else {
       // Logged in - proceed to checkout
-      trackingClient.trackCustomEvent('begin_checkout', { 
+      trackingClient.trackCustomEvent('begin_checkout', {
         source: 'cart_page',
         total,
-        itemCount: totalItems 
+        itemCount: totalItems
       });
       navigate('/checkout');
     }

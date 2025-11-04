@@ -4,12 +4,16 @@ import { useState, useEffect } from 'react';
 import { getProductById } from '../../services/products';
 import trackingClient from '../../services/trackingClient';
 import { useCart } from '../../context/CartContext';
+import { useCustomerOnly } from '../../hooks/useRouteProtection';
 
 function classNames(...classes: (string | boolean | undefined)[]) {
   return classes.filter(Boolean).join(' ');
 }
 
 export default function ProductDetail() {
+  // Protect this route - admins should not access product pages
+  useCustomerOnly();
+
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [product, setProduct] = useState<any>(null);

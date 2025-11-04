@@ -17,6 +17,7 @@ const API_URL = (import.meta as any).env?.VITE_API_BASE || (import.meta as any).
 interface Recording {
   sessionId: string;
   userId?: string;
+  userName?: string;
   startTime: Date;
   duration: number;
   device?: {
@@ -51,7 +52,7 @@ const RecordingsList: React.FC = () => {
   const fetchRecordings = async () => {
     try {
       setLoading(true);
-      const params: Record<string, any> = { 
+      const params: Record<string, any> = {
         page: currentPage,
         limit: 20,
       };
@@ -62,7 +63,7 @@ const RecordingsList: React.FC = () => {
         params,
         withCredentials: true,
       });
-      
+
       setRecordings(response.data.sessions || []);
       setTotalPages(response.data.pagination?.totalPages || 1);
       setError(null);
@@ -169,92 +170,92 @@ const RecordingsList: React.FC = () => {
                 onClick={() => navigate(`/admin/analytics/recordings/${recording.sessionId}`)}
               >
                 {/* Preview Area */}
-              <div className="relative bg-gradient-to-br from-blue-500 to-purple-600 aspect-video flex items-center justify-center">
-                <MonitorPlay className="w-16 h-16 text-white opacity-70 group-hover:opacity-100 transition-opacity" />
-                <div className="absolute top-3 right-3">
-                  {recording.hasErrors && (
-                    <div className="bg-red-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      Errors
+                <div className="relative bg-gradient-to-br from-blue-500 to-purple-600 aspect-video flex items-center justify-center">
+                  <MonitorPlay className="w-16 h-16 text-white opacity-70 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute top-3 right-3">
+                    {recording.hasErrors && (
+                      <div className="bg-red-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        Errors
+                      </div>
+                    )}
+                  </div>
+                  <div className="absolute bottom-3 left-3 bg-black bg-opacity-70 px-3 py-1 rounded-full text-white text-sm font-medium flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    {formatDuration(recording.duration / 1000)}
+                  </div>
+                </div>
+
+                {/* Info */}
+                <div className="p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 mb-1 truncate">
+                        {recording.userName || recording.userId || 'Anonymous User'}
+                      </h3>
+                      <p className="text-xs text-gray-500">{formatDate(recording.startTime)}</p>
                     </div>
-                  )}
-                </div>
-                <div className="absolute bottom-3 left-3 bg-black bg-opacity-70 px-3 py-1 rounded-full text-white text-sm font-medium flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  {formatDuration(recording.duration / 1000)}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/admin/analytics/recordings/${recording.sessionId}`);
+                      }}
+                      className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <Play className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Stats */}
+                  <div className="grid grid-cols-3 gap-2 mb-3">
+                    <div className="text-center p-2 bg-gray-50 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">Events</p>
+                      <p className="text-sm font-bold text-gray-900">{recording.stats?.totalEvents || 0}</p>
+                    </div>
+                    <div className="text-center p-2 bg-blue-50 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">Clicks</p>
+                      <p className="text-sm font-bold text-blue-600">{recording.stats?.totalClicks || 0}</p>
+                    </div>
+                    <div className="text-center p-2 bg-green-50 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">Scrolls</p>
+                      <p className="text-sm font-bold text-green-600">{recording.stats?.totalScrolls || 0}</p>
+                    </div>
+                  </div>
+
+                  {/* Device Info */}
+                  <div className="flex items-center gap-2 text-xs text-gray-500 border-t border-gray-100 pt-3">
+                    <MousePointer2 className="w-4 h-4" />
+                    <span>
+                      {recording.device?.type || 'Unknown'} • {recording.device?.browser || 'Unknown'} • {recording.device?.os || 'Unknown'}
+                    </span>
+                  </div>
                 </div>
               </div>
-
-              {/* Info */}
-              <div className="p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 mb-1 truncate">
-                      {recording.userId || 'Anonymous User'}
-                    </h3>
-                    <p className="text-xs text-gray-500">{formatDate(recording.startTime)}</p>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/admin/analytics/recordings/${recording.sessionId}`);
-                    }}
-                    className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <Play className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-2 mb-3">
-                  <div className="text-center p-2 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1">Events</p>
-                    <p className="text-sm font-bold text-gray-900">{recording.stats?.totalEvents || 0}</p>
-                  </div>
-                  <div className="text-center p-2 bg-blue-50 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1">Clicks</p>
-                    <p className="text-sm font-bold text-blue-600">{recording.stats?.totalClicks || 0}</p>
-                  </div>
-                  <div className="text-center p-2 bg-green-50 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1">Scrolls</p>
-                    <p className="text-sm font-bold text-green-600">{recording.stats?.totalScrolls || 0}</p>
-                  </div>
-                </div>
-
-                {/* Device Info */}
-                <div className="flex items-center gap-2 text-xs text-gray-500 border-t border-gray-100 pt-3">
-                  <MousePointer2 className="w-4 h-4" />
-                  <span>
-                    {recording.device?.type || 'Unknown'} • {recording.device?.browser || 'Unknown'} • {recording.device?.os || 'Unknown'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="mt-8 flex items-center justify-center gap-2">
-            <button
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <span className="px-4 py-2 text-sm text-gray-600">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
+            ))}
           </div>
-        )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-8 flex items-center justify-center gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <span className="px-4 py-2 text-sm text-gray-600">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

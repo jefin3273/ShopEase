@@ -3,6 +3,7 @@ import analyticsManager from '../../services/AnalyticsManager';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
+import { useCustomerOnly } from '../../hooks/useRouteProtection';
 import axios from 'axios';
 
 // Resolve API base from env: prefer VITE_API_BASE (docs/production), then VITE_API_URL (legacy), then localhost
@@ -13,6 +14,9 @@ export default function Checkout() {
   const { items, clear, subtotal } = useCart();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Protect this route - admins should not access checkout
+  useCustomerOnly();
 
   let auth: any = null;
   try { auth = useAuth(); } catch (e) { auth = null; }
@@ -68,7 +72,7 @@ export default function Checkout() {
 
     try {
       const token = localStorage.getItem('token');
-      
+
       // Create order in backend
       const response = await axios.post(
         `${API_BASE}/api/orders`,
@@ -154,7 +158,7 @@ export default function Checkout() {
       <div className="h-20 sm:h-24" />
       <div className="max-w-4xl mx-auto p-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-6">Checkout</h1>
-        
+
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
             {error}

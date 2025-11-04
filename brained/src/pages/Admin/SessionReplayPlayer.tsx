@@ -24,6 +24,7 @@ interface RecordingEvent {
 interface Recording {
   sessionId: string;
   userId?: string;
+  userName?: string;
   projectId: string;
   startTime: Date;
   endTime?: Date;
@@ -370,8 +371,8 @@ const SessionReplayPlayer: React.FC = () => {
                       key={speed}
                       onClick={() => handleSpeedChange(speed)}
                       className={`px-3 py-1 rounded text-sm font-medium transition-colors ${playbackSpeed === speed
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                         }`}
                     >
                       {speed}x
@@ -430,8 +431,8 @@ const SessionReplayPlayer: React.FC = () => {
             <h3 className="font-semibold text-gray-900 mb-3">Session Details</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-500">User ID:</span>
-                <span className="font-medium">{recording.userId || 'Anonymous'}</span>
+                <span className="text-gray-500">User:</span>
+                <span className="font-medium">{recording.userName || recording.userId || 'Anonymous'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Device:</span>
@@ -478,10 +479,10 @@ const SessionReplayPlayer: React.FC = () => {
                     <div
                       key={idx}
                       className={`p-2 rounded text-xs font-mono ${log.level === 'error'
-                          ? 'bg-red-50 text-red-700 border border-red-200'
-                          : log.level === 'warn'
-                            ? 'bg-yellow-50 text-yellow-700 border border-yellow-200'
-                            : 'bg-gray-50 text-gray-700 border border-gray-200'
+                        ? 'bg-red-50 text-red-700 border border-red-200'
+                        : log.level === 'warn'
+                          ? 'bg-yellow-50 text-yellow-700 border border-yellow-200'
+                          : 'bg-gray-50 text-gray-700 border border-gray-200'
                         }`}
                     >
                       <div className="flex items-start gap-2">

@@ -23,8 +23,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     (async () => {
       try {
         const res = await api.post('/api/auth/refresh');
-  setAccessToken(res.data.accessToken);
-  if (res.data.accessToken) api.defaults.headers.common['Authorization'] = 'Bearer ' + res.data.accessToken;
+        setAccessToken(res.data.accessToken);
+        if (res.data.accessToken) api.defaults.headers.common['Authorization'] = 'Bearer ' + res.data.accessToken;
         if (res.data.user) setUser(res.data.user);
       } catch (e) {
         // no session
@@ -35,26 +35,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     const res = await api.post('/api/auth/login', { email, password });
     setAccessToken(res.data.accessToken);
-    if (res.data.accessToken) api.defaults.headers.common['Authorization'] = 'Bearer ' + res.data.accessToken;
+    if (res.data.accessToken) {
+      api.defaults.headers.common['Authorization'] = 'Bearer ' + res.data.accessToken;
+      localStorage.setItem('token', res.data.accessToken);
+    }
     if (res.data.user) setUser(res.data.user);
+    // Trigger cart sync by dispatching event
+    window.dispatchEvent(new Event('user-login'));
     return res.data.user as User;
   };
 
   const register = async (name: string, email: string, password: string, adminSecret?: string) => {
-    const body: any = { name, email, password };
+    const body: { name: string; email: string; password: string; adminSecret?: string } = { name, email, password };
     if (adminSecret) body.adminSecret = adminSecret;
     const res = await api.post('/api/auth/register', body);
     setAccessToken(res.data.accessToken);
-    if (res.data.accessToken) api.defaults.headers.common['Authorization'] = 'Bearer ' + res.data.accessToken;
+    if (res.data.accessToken) {
+      api.defaults.headers.common['Authorization'] = 'Bearer ' + res.data.accessToken;
+      localStorage.setItem('token', res.data.accessToken);
+    }
     if (res.data.user) setUser(res.data.user);
+    // Trigger cart sync by dispatching event
+    window.dispatchEvent(new Event('user-login'));
     return res.data.user as User;
   };
 
   const logout = async () => {
     await api.post('/api/auth/logout');
     setAccessToken(null);
+    localStorage.removeItem('token');
     delete api.defaults.headers.common['Authorization'];
     setUser(null);
+    // Dispatch logout event to clear cart
+    window.dispatchEvent(new Event('user-logout'));
   };
 
   return (

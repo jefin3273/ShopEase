@@ -3,13 +3,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table';
 import {
   Dialog,
@@ -20,16 +20,16 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Loader2, 
-  Search, 
+import {
+  Loader2,
+  Search,
   User,
   Clock,
   Activity,
   Eye,
   MousePointer,
   AlertTriangle,
-  
+
 } from 'lucide-react';
 import axios from 'axios';
 import SessionReplayPlayerFull from '@/components/SessionReplayPlayerFull';
@@ -38,6 +38,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
 interface Person {
   userId: string;
+  userName?: string; // Add userName field
   sessionCount: number;
   eventCount: number;
   lastSeen: string;
@@ -71,14 +72,14 @@ export default function PeopleTab() {
   const fetchPeople = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch all sessions and interactions to build people list
       const [sessionsRes, interactionsRes] = await Promise.all([
         axios.get(`${API_BASE}/api/tracking/sessions?limit=1000`),
         axios.get(`${API_BASE}/api/tracking/interactions?limit=5000`)
       ]);
 
-  const sessions = (sessionsRes.data as any)?.sessions ?? sessionsRes.data;
+      const sessions = (sessionsRes.data as any)?.sessions ?? sessionsRes.data;
       const interactions = interactionsRes.data;
 
       // Group by userId
@@ -86,10 +87,11 @@ export default function PeopleTab() {
 
       sessions.forEach((session: any) => {
         const userId = session.userId || 'anonymous';
-        
+
         if (!peopleMap.has(userId)) {
           peopleMap.set(userId, {
             userId,
+            userName: session.userName, // Capture userName from enriched session data
             sessionCount: 0,
             eventCount: 0,
             lastSeen: session.startTime,
@@ -103,7 +105,7 @@ export default function PeopleTab() {
         const person = peopleMap.get(userId)!;
         person.sessionCount++;
         person.eventCount += session.events?.length || 0;
-        
+
         if (new Date(session.startTime) > new Date(person.lastSeen)) {
           person.lastSeen = session.startTime;
         }
@@ -132,7 +134,7 @@ export default function PeopleTab() {
           }
         });
 
-      setPeople(Array.from(peopleMap.values()).sort((a, b) => 
+      setPeople(Array.from(peopleMap.values()).sort((a, b) =>
         new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime()
       ));
     } catch (error) {
@@ -145,7 +147,7 @@ export default function PeopleTab() {
   const fetchPersonActivity = async (userId: string) => {
     try {
       setLoadingActivity(true);
-      
+
       const [sessionsRes, interactionsRes] = await Promise.all([
         axios.get(`${API_BASE}/api/tracking/sessions?userId=${userId}`),
         axios.get(`${API_BASE}/api/tracking/interactions?userId=${userId}`)
@@ -157,8 +159,8 @@ export default function PeopleTab() {
         : (sessionsRaw ? [sessionsRaw] : []);
 
       const events = interactionsRes.data;
-      const errors = events.filter((e: any) => 
-        e.eventName?.includes('error') || 
+      const errors = events.filter((e: any) =>
+        e.eventName?.includes('error') ||
         e.eventType === 'error' ||
         e.eventName === 'network_error' ||
         e.eventName === 'console_error'
@@ -187,8 +189,9 @@ export default function PeopleTab() {
     setReplayDialogOpen(true);
   };
 
-  const filteredPeople = people.filter(person => 
-    person.userId.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredPeople = people.filter(person =>
+    person.userId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    person.userName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const formatTimestamp = (timestamp: string) => {
@@ -309,7 +312,7 @@ export default function PeopleTab() {
                 </TableHeader>
                 <TableBody>
                   {filteredPeople.map((person) => (
-                    <TableRow 
+                    <TableRow
                       key={person.userId}
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => handlePersonClick(person)}
@@ -317,7 +320,7 @@ export default function PeopleTab() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-mono">{person.userId}</span>
+                          <span className="font-mono">{person.userName || person.userId}</span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -366,7 +369,7 @@ export default function PeopleTab() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
-              {selectedPerson?.userId}
+              {selectedPerson?.userName || selectedPerson?.userId}
             </DialogTitle>
             <DialogDescription>
               User activity and session history
@@ -479,8 +482,8 @@ export default function PeopleTab() {
                                   <p className="text-sm text-muted-foreground">{session.entryURL}</p>
                                   <p className="text-xs text-muted-foreground">{formatTimestamp(session.startTime)}</p>
                                 </div>
-                                <Button 
-                                  size="sm" 
+                                <Button
+                                  size="sm"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleViewSession(session.sessionId);

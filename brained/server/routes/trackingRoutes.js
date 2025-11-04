@@ -3,6 +3,8 @@ const router = express.Router();
 const SessionRecording = require('../models/SessionRecording');
 const HeatmapData = require('../models/HeatmapData');
 const UserInteraction = require('../models/UserInteraction');
+const User = require('../models/User');
+const { enrichWithUserNames } = require('../utils/userEnricher');
 
 // ===== SESSION RECORDING ENDPOINTS =====
 
@@ -13,6 +15,22 @@ router.post('/session', async (req, res) => {
 
     if (!sessionId || !events || !Array.isArray(events)) {
       return res.status(400).json({ message: 'sessionId and events array are required' });
+    }
+
+    // Check if URL is an admin path and reject tracking
+    if (metadata?.url) {
+      const url = metadata.url.toLowerCase();
+      if (url.includes('/admin') || url.includes('/login')) {
+        return res.status(200).json({ message: 'Admin paths not tracked' });
+      }
+    }
+
+    // If userId is provided, check if user is admin
+    if (userId && userId !== 'anonymous') {
+      const user = await User.findById(userId).select('role');
+      if (user && user.role === 'admin') {
+        return res.status(200).json({ message: 'Admin users not tracked' });
+      }
     }
 
     let session = await SessionRecording.findOne({ sessionId });
@@ -88,7 +106,7 @@ router.post('/session/:sessionId/complete', async (req, res) => {
 
     session.isComplete = true;
     session.endTime = new Date();
-    
+
     if (session.startTime) {
       session.duration = Math.floor((session.endTime - session.startTime) / 1000); // seconds
     }
@@ -144,7 +162,7 @@ router.get('/sessions', async (req, res) => {
     if (userId) query.userId = userId;
     if (hasErrors !== undefined) query.hasErrors = hasErrors === 'true';
     if (isComplete !== undefined) query.isComplete = isComplete === 'true';
-    
+
     if (startDate || endDate) {
       query.startTime = {};
       if (startDate) query.startTime.$gte = new Date(startDate);
@@ -160,8 +178,11 @@ router.get('/sessions', async (req, res) => {
 
     const total = await SessionRecording.countDocuments(query);
 
+    // Enrich sessions with user names
+    const enrichedSessions = await enrichWithUserNames(sessions);
+
     res.json({
-      sessions,
+      sessions: enrichedSessions,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -186,7 +207,10 @@ router.get('/sessions/:sessionId', async (req, res) => {
       return res.status(404).json({ message: 'Session not found' });
     }
 
-    res.json({ session });
+    // Enrich session with user name
+    const enrichedSession = (await enrichWithUserNames([session]))[0];
+
+    res.json({ session: enrichedSession });
   } catch (error) {
     console.error('Error fetching session:', error);
     res.status(500).json({ message: 'Failed to fetch session', error: error.message });
@@ -229,6 +253,20 @@ router.post('/interaction', async (req, res) => {
       return res.status(400).json({
         message: 'sessionId, eventType, and pageURL are required',
       });
+    }
+
+    // Check if URL is an admin path and reject tracking
+    const url = pageURL.toLowerCase();
+    if (url.includes('/admin') || url.includes('/login')) {
+      return res.status(200).json({ message: 'Admin paths not tracked' });
+    }
+
+    // If userId is provided, check if user is admin
+    if (userId && userId !== 'anonymous') {
+      const user = await User.findById(userId).select('role');
+      if (user && user.role === 'admin') {
+        return res.status(200).json({ message: 'Admin users not tracked' });
+      }
     }
 
     const interaction = new UserInteraction({
@@ -318,7 +356,32 @@ router.post('/interactions/batch', async (req, res) => {
       return res.status(400).json({ message: 'interactions array is required' });
     }
 
-    const docs = interactions.map((i) => ({
+    // Filter out admin paths and admin users
+    const validInteractions = [];
+
+    for (const i of interactions) {
+      // Skip admin paths
+      const url = (i.pageURL || '').toLowerCase();
+      if (url.includes('/admin') || url.includes('/login')) {
+        continue;
+      }
+
+      // Skip admin users
+      if (i.userId && i.userId !== 'anonymous') {
+        const user = await User.findById(i.userId).select('role');
+        if (user && user.role === 'admin') {
+          continue;
+        }
+      }
+
+      validInteractions.push(i);
+    }
+
+    if (validInteractions.length === 0) {
+      return res.status(200).json({ message: 'No valid interactions to record' });
+    }
+
+    const docs = validInteractions.map((i) => ({
       sessionId: i.sessionId,
       userId: i.userId || 'anonymous',
       projectId: i.projectId || 'default',
@@ -418,7 +481,7 @@ router.get('/heatmap', async (req, res) => {
 
     // Check if we need to regenerate or if cached version exists
     let heatmap = null;
-    
+
     if (regenerate !== 'true') {
       heatmap = await HeatmapData.findOne({
         pageURL,
@@ -507,15 +570,21 @@ router.get('/stats', async (req, res) => {
 // Get interactions with pagination
 router.get('/interactions', async (req, res) => {
   try {
-    const { limit = 100, skip = 0 } = req.query;
+    const { limit = 100, skip = 0, userId } = req.query;
 
-    const interactions = await UserInteraction.find()
+    const query = {};
+    if (userId) query.userId = userId;
+
+    const interactions = await UserInteraction.find(query)
       .sort({ timestamp: -1 })
       .limit(parseInt(limit))
       .skip(parseInt(skip))
       .lean();
 
-    res.json(interactions);
+    // Enrich interactions with user names
+    const enrichedInteractions = await enrichWithUserNames(interactions);
+
+    res.json(enrichedInteractions);
   } catch (error) {
     console.error('Error fetching interactions:', error);
     res.status(500).json({ message: 'Failed to fetch interactions', error: error.message });
@@ -588,7 +657,7 @@ router.delete('/flush-all', async (req, res) => {
       FeatureFlag.deleteMany({}),
     ]);
 
-    res.json({ 
+    res.json({
       message: 'All analytics data has been deleted successfully',
       deleted: {
         sessionRecordings: results[0].deletedCount,

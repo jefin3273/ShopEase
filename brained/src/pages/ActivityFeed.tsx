@@ -3,13 +3,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table';
 import {
   Dialog,
@@ -20,9 +20,9 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Loader2, 
-  Search, 
+import {
+  Loader2,
+  Search,
   MousePointer,
   Eye,
   Scroll,
@@ -45,6 +45,7 @@ interface ActivityEvent {
   eventName: string;
   sessionId: string;
   userId?: string;
+  userName?: string; // Add userName field
   pageURL: string;
   metadata: any;
   timestamp: string;
@@ -96,13 +97,14 @@ export default function ActivityFeed() {
   };
 
   const filteredEvents = events.filter(event => {
-    const matchesSearch = 
+    const matchesSearch =
       event.eventName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       event.pageURL.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.userId?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+      event.userId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.userName?.toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesType = eventTypeFilter === 'all' || event.eventType === eventTypeFilter;
-    
+
     return matchesSearch && matchesType;
   });
 
@@ -211,8 +213,8 @@ export default function ActivityFeed() {
                 </TableHeader>
                 <TableBody>
                   {filteredEvents.map((event) => (
-                    <TableRow 
-                      key={event._id} 
+                    <TableRow
+                      key={event._id}
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => handleEventClick(event)}
                     >
@@ -228,7 +230,7 @@ export default function ActivityFeed() {
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-muted-foreground" />
                           <span className="text-sm font-mono truncate">
-                            {event.userId || 'Anonymous'}
+                            {event.userName || event.userId || 'Anonymous'}
                           </span>
                         </div>
                       </TableCell>
@@ -303,8 +305,8 @@ export default function ActivityFeed() {
                         <dt className="text-muted-foreground">Event Name:</dt>
                         <dd className="font-medium">{selectedEvent.eventName}</dd>
 
-                        <dt className="text-muted-foreground">User ID:</dt>
-                        <dd className="font-mono">{selectedEvent.userId || 'Anonymous'}</dd>
+                        <dt className="text-muted-foreground">User:</dt>
+                        <dd className="font-mono">{selectedEvent.userName || selectedEvent.userId || 'Anonymous'}</dd>
 
                         <dt className="text-muted-foreground">Session ID:</dt>
                         <dd className="font-mono text-xs">{selectedEvent.sessionId}</dd>
@@ -412,7 +414,7 @@ export default function ActivityFeed() {
                             <>
                               <dt className="text-muted-foreground">Class Name:</dt>
                               <dd className="font-mono text-xs break-all">
-                                {typeof selectedEvent.metadata.className === 'object' 
+                                {typeof selectedEvent.metadata.className === 'object'
                                   ? JSON.stringify(selectedEvent.metadata.className)
                                   : selectedEvent.metadata.className
                                 }

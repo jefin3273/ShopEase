@@ -8,7 +8,7 @@ const { Server } = require('socket.io');
 
 const app = express();
 // Increase header size limit to prevent 431 errors
-const server = http.createServer({ maxHeaderSize: 16384 }, app);
+const server = http.createServer({ maxHeaderSize: 65536 }, app);
 
 // middleware - increase payload limit for image uploads (base64 encoded images can be large)
 app.use(express.json({ limit: '50mb' }));
@@ -119,6 +119,7 @@ const funnelsRoutes = require('./routes/funnels');
 const cohortsRoutes = require('./routes/cohorts');
 const experimentsRoutes = require('./routes/experiments');
 const ordersRoutes = require('./routes/orders');
+const cartRoutes = require('./routes/cart');
 const analyticsAdminRoutes = require('./routes/analyticsAdmin');
 const rateLimiter = require('./middleware/rateLimiter');
 const deviceInfo = require('./middleware/deviceInfo');
@@ -161,6 +162,9 @@ app.use('/api/experiments', experimentsRoutes);
 
 // orders API
 app.use('/api/orders', ordersRoutes);
+
+// cart API
+app.use('/api/cart', cartRoutes);
 
 // seeding API
 const seedRoutes = require('./routes/seed');

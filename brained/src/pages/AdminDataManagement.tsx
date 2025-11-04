@@ -73,9 +73,9 @@ export default function AdminDataManagement() {
   const [seeding, setSeeding] = useState(false);
   const [resetting, setResetting] = useState(false);
 
-    // Product seeding dialog state
-    const [seedDialogOpen, setSeedDialogOpen] = useState(false);
-    const [selectedCategories, setSelectedCategories] = useState<string[]>(['Electronics', 'Wearables', 'Apparel', 'Footwear']);
+  // Product seeding dialog state
+  const [seedDialogOpen, setSeedDialogOpen] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(['Electronics', 'Wearables', 'Apparel', 'Footwear']);
 
   // Analytics detail dialog state
   const [analyticsDialogOpen, setAnalyticsDialogOpen] = useState(false);
@@ -127,7 +127,7 @@ export default function AdminDataManagement() {
       case 'sessions':
         return {
           col1: truncate(item.sessionId, 30),
-          col2: truncate(item.userId || 'Anonymous', 30),
+          col2: truncate(item.userName || item.userId || 'Anonymous', 30),
           col3: new Date(item.startedAt || item.createdAt || Date.now()).toLocaleString(),
         };
       case 'sessionRecordings':
@@ -233,7 +233,7 @@ export default function AdminDataManagement() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch stats
       const statsRes = await axios.get(`${API_BASE}/api/tracking/stats`);
       setStats(statsRes.data);
@@ -314,17 +314,17 @@ export default function AdminDataManagement() {
   const handleSeedProducts = async () => {
     try {
       setSeeding(true);
-        const res = await axios.post(`${API_BASE}/api/seed/products`, { 
-          categories: selectedCategories.length > 0 ? selectedCategories : undefined 
-        });
-      
+      const res = await axios.post(`${API_BASE}/api/seed/products`, {
+        categories: selectedCategories.length > 0 ? selectedCategories : undefined
+      });
+
       toast({
         title: 'Success',
         description: res.data.message || `Seeded ${res.data.count} products`,
       });
 
       await fetchSeedStats();
-        setSeedDialogOpen(false);
+      setSeedDialogOpen(false);
     } catch (error: any) {
       console.error('Error seeding products:', error);
       toast({
@@ -337,19 +337,19 @@ export default function AdminDataManagement() {
     }
   };
 
-    const toggleCategory = (category: string) => {
-      setSelectedCategories(prev =>
-        prev.includes(category)
-          ? prev.filter(c => c !== category)
-          : [...prev, category]
-      );
-    };
+  const toggleCategory = (category: string) => {
+    setSelectedCategories(prev =>
+      prev.includes(category)
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  };
 
   const handleResetDatabase = async () => {
     try {
       setResetting(true);
-         await axios.post(`${API_BASE}/api/seed/reset`);
-      
+      await axios.post(`${API_BASE}/api/seed/reset`);
+
       toast({
         title: 'Database Reset',
         description: 'All data cleared except admin user',
@@ -373,7 +373,7 @@ export default function AdminDataManagement() {
   const handleFlushAll = async () => {
     try {
       await axios.delete(`${API_BASE}/api/tracking/flush-all`);
-      
+
       toast({
         title: 'Success',
         description: 'All analytics data has been deleted',
@@ -382,7 +382,7 @@ export default function AdminDataManagement() {
       // Reset local state
       setStats({ sessions: 0, interactions: 0, heatmapData: 0 });
       setSessions([]);
-      
+
       // Refresh data
       await fetchData();
     } catch (error: any) {
@@ -398,7 +398,7 @@ export default function AdminDataManagement() {
   const handleDeleteSession = async (sessionId: string) => {
     try {
       await axios.delete(`${API_BASE}/api/tracking/sessions/${sessionId}`);
-      
+
       toast({
         title: 'Success',
         description: 'Session deleted successfully',
@@ -514,7 +514,7 @@ export default function AdminDataManagement() {
                     {sessions.map((session) => (
                       <TableRow key={session._id}>
                         <TableCell className="font-mono text-xs">{session.sessionId.slice(0, 8)}...</TableCell>
-                        <TableCell className="font-mono text-xs">{session.userId?.slice(0, 8) || 'Anonymous'}</TableCell>
+                        <TableCell className="font-mono text-xs">{session.userName || session.userId?.slice(0, 8) || 'Anonymous'}</TableCell>
                         <TableCell className="max-w-xs truncate">{session.metadata?.url || 'N/A'}</TableCell>
                         <TableCell>{session.metadata?.device?.type || 'Unknown'}</TableCell>
                         <TableCell className="text-xs">{new Date(session.startedAt).toLocaleString()}</TableCell>
@@ -563,7 +563,7 @@ export default function AdminDataManagement() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold">Captured Analytics Data</h2>
-                <p className="text-sm text-muted-foreground">All analytics data captured from user activity</p>
+              <p className="text-sm text-muted-foreground">All analytics data captured from user activity</p>
             </div>
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -589,163 +589,163 @@ export default function AdminDataManagement() {
             </AlertDialog>
           </div>
 
-            <div className="grid gap-4 md:grid-cols-4">
-              <Card className="cursor-pointer" onClick={() => openCategory('sessions')}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Sessions</CardTitle>
-                  <Activity className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{seedStats?.analytics.sessions || 0}</div>
-                  <p className="text-xs text-muted-foreground">User sessions</p>
-                </CardContent>
-              </Card>
+          <div className="grid gap-4 md:grid-cols-4">
+            <Card className="cursor-pointer" onClick={() => openCategory('sessions')}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Sessions</CardTitle>
+                <Activity className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{seedStats?.analytics.sessions || 0}</div>
+                <p className="text-xs text-muted-foreground">User sessions</p>
+              </CardContent>
+            </Card>
 
-              <Card className="cursor-pointer" onClick={() => openCategory('pageViews')}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Page Views</CardTitle>
-                  <Zap className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{seedStats?.analytics.pageViews || 0}</div>
-                  <p className="text-xs text-muted-foreground">Page navigation events</p>
-                </CardContent>
-              </Card>
+            <Card className="cursor-pointer" onClick={() => openCategory('pageViews')}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Page Views</CardTitle>
+                <Zap className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{seedStats?.analytics.pageViews || 0}</div>
+                <p className="text-xs text-muted-foreground">Page navigation events</p>
+              </CardContent>
+            </Card>
 
             <Card className="cursor-pointer" onClick={() => openCategory('userEvents')}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">User Events</CardTitle>
+                <CardTitle className="text-sm font-medium">User Events</CardTitle>
                 <MousePointer className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                  <div className="text-2xl font-bold">{seedStats?.analytics.userEvents || 0}</div>
-                  <p className="text-xs text-muted-foreground">Custom tracked events</p>
-                </CardContent>
-              </Card>
+                <div className="text-2xl font-bold">{seedStats?.analytics.userEvents || 0}</div>
+                <p className="text-xs text-muted-foreground">Custom tracked events</p>
+              </CardContent>
+            </Card>
 
-              <Card className="cursor-pointer" onClick={() => openCategory('interactions')}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Interactions</CardTitle>
-                  <MousePointer className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{seedStats?.analytics.interactions || 0}</div>
-                  <p className="text-xs text-muted-foreground">Clicks, scrolls, inputs</p>
+            <Card className="cursor-pointer" onClick={() => openCategory('interactions')}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Interactions</CardTitle>
+                <MousePointer className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{seedStats?.analytics.interactions || 0}</div>
+                <p className="text-xs text-muted-foreground">Clicks, scrolls, inputs</p>
               </CardContent>
             </Card>
 
             <Card className="cursor-pointer" onClick={() => openCategory('heatmaps')}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Heatmaps</CardTitle>
+                <CardTitle className="text-sm font-medium">Heatmaps</CardTitle>
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                  <div className="text-2xl font-bold">{seedStats?.analytics.heatmaps || 0}</div>
-                  <p className="text-xs text-muted-foreground">Movement tracking</p>
+                <div className="text-2xl font-bold">{seedStats?.analytics.heatmaps || 0}</div>
+                <p className="text-xs text-muted-foreground">Movement tracking</p>
               </CardContent>
             </Card>
 
             <Card className="cursor-pointer" onClick={() => openCategory('sessionRecordings')}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Session Recordings</CardTitle>
-                  <Video className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{seedStats?.analytics.sessionRecordings || 0}</div>
-                  <p className="text-xs text-muted-foreground">Replay recordings</p>
-                </CardContent>
-              </Card>
+                <CardTitle className="text-sm font-medium">Session Recordings</CardTitle>
+                <Video className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{seedStats?.analytics.sessionRecordings || 0}</div>
+                <p className="text-xs text-muted-foreground">Replay recordings</p>
+              </CardContent>
+            </Card>
 
-              <Card className="cursor-pointer" onClick={() => openCategory('eventAnalytics')}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Event Analytics</CardTitle>
-                  <Zap className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{seedStats?.analytics.eventAnalytics || 0}</div>
-                  <p className="text-xs text-muted-foreground">Event aggregations</p>
-                </CardContent>
-              </Card>
+            <Card className="cursor-pointer" onClick={() => openCategory('eventAnalytics')}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Event Analytics</CardTitle>
+                <Zap className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{seedStats?.analytics.eventAnalytics || 0}</div>
+                <p className="text-xs text-muted-foreground">Event aggregations</p>
+              </CardContent>
+            </Card>
 
-              <Card className="cursor-pointer" onClick={() => openCategory('performanceMetrics')}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Performance</CardTitle>
+            <Card className="cursor-pointer" onClick={() => openCategory('performanceMetrics')}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Performance</CardTitle>
                 <Database className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                  <div className="text-2xl font-bold">{seedStats?.analytics.performanceMetrics || 0}</div>
-                  <p className="text-xs text-muted-foreground">Performance data</p>
-                </CardContent>
-              </Card>
+                <div className="text-2xl font-bold">{seedStats?.analytics.performanceMetrics || 0}</div>
+                <p className="text-xs text-muted-foreground">Performance data</p>
+              </CardContent>
+            </Card>
 
-              <Card className="cursor-pointer" onClick={() => openCategory('funnels')}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Funnels</CardTitle>
-                  <Activity className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{seedStats?.analytics.funnels || 0}</div>
-                  <p className="text-xs text-muted-foreground">Conversion funnels</p>
-                </CardContent>
-              </Card>
+            <Card className="cursor-pointer" onClick={() => openCategory('funnels')}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Funnels</CardTitle>
+                <Activity className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{seedStats?.analytics.funnels || 0}</div>
+                <p className="text-xs text-muted-foreground">Conversion funnels</p>
+              </CardContent>
+            </Card>
 
-              <Card className="cursor-pointer" onClick={() => openCategory('experiments')}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">A/B Tests</CardTitle>
-                  <Zap className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{seedStats?.analytics.experiments || 0}</div>
-                  <p className="text-xs text-muted-foreground">Active experiments</p>
-                </CardContent>
-              </Card>
+            <Card className="cursor-pointer" onClick={() => openCategory('experiments')}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">A/B Tests</CardTitle>
+                <Zap className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{seedStats?.analytics.experiments || 0}</div>
+                <p className="text-xs text-muted-foreground">Active experiments</p>
+              </CardContent>
+            </Card>
 
-              <Card className="cursor-pointer" onClick={() => openCategory('cohorts')}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Cohorts</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{seedStats?.analytics.cohorts || 0}</div>
-                  <p className="text-xs text-muted-foreground">User cohorts</p>
-                </CardContent>
-              </Card>
+            <Card className="cursor-pointer" onClick={() => openCategory('cohorts')}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Cohorts</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{seedStats?.analytics.cohorts || 0}</div>
+                <p className="text-xs text-muted-foreground">User cohorts</p>
+              </CardContent>
+            </Card>
 
-              <Card className="cursor-pointer" onClick={() => openCategory('featureFlags')}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Feature Flags</CardTitle>
-                  <Database className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{seedStats?.analytics.featureFlags || 0}</div>
-                  <p className="text-xs text-muted-foreground">Feature toggles</p>
+            <Card className="cursor-pointer" onClick={() => openCategory('featureFlags')}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Feature Flags</CardTitle>
+                <Database className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{seedStats?.analytics.featureFlags || 0}</div>
+                <p className="text-xs text-muted-foreground">Feature toggles</p>
               </CardContent>
             </Card>
           </div>
 
           <Card>
             <CardHeader>
-                <CardTitle>Analytics Data Overview</CardTitle>
-                <CardDescription>All captured analytics data is shown in the respective analytics pages. Use "Reset All" in the Seeded Data tab to clear everything.</CardDescription>
+              <CardTitle>Analytics Data Overview</CardTitle>
+              <CardDescription>All captured analytics data is shown in the respective analytics pages. Use "Reset All" in the Seeded Data tab to clear everything.</CardDescription>
             </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  View detailed analytics data in their respective pages:
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                View detailed analytics data in their respective pages:
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                <li><strong>Activity Feed:</strong> Real-time user interactions and events</li>
+                <li><strong>Heatmaps:</strong> Visual click and movement tracking</li>
+                <li><strong>Session Recordings:</strong> Full replay of user sessions (Recordings tab)</li>
+                <li><strong>Funnel Analysis:</strong> Conversion tracking and drop-off points</li>
+                <li><strong>A/B Testing:</strong> Experiment results and variants</li>
+                <li><strong>Events & Metrics:</strong> Custom event tracking and performance data</li>
+              </ul>
+              <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
+                <p className="text-sm font-medium text-amber-900 dark:text-amber-100">⚠️ To delete all analytics data</p>
+                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                  Go to the <strong>Seeded Data</strong> tab and click <strong>"Reset All"</strong> to clear all analytics, products, orders, and non-admin users.
                 </p>
-                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                  <li><strong>Activity Feed:</strong> Real-time user interactions and events</li>
-                  <li><strong>Heatmaps:</strong> Visual click and movement tracking</li>
-                  <li><strong>Session Recordings:</strong> Full replay of user sessions (Recordings tab)</li>
-                  <li><strong>Funnel Analysis:</strong> Conversion tracking and drop-off points</li>
-                  <li><strong>A/B Testing:</strong> Experiment results and variants</li>
-                  <li><strong>Events & Metrics:</strong> Custom event tracking and performance data</li>
-                </ul>
-                <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
-                  <p className="text-sm font-medium text-amber-900 dark:text-amber-100">⚠️ To delete all analytics data</p>
-                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                    Go to the <strong>Seeded Data</strong> tab and click <strong>"Reset All"</strong> to clear all analytics, products, orders, and non-admin users.
-                  </p>
-                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -816,7 +816,7 @@ export default function AdminDataManagement() {
                           const data = getCategoryData(selectedCategory, it);
                           return (
                             <TableRow key={it._id}>
-                              <TableCell className="font-mono text-xs whitespace-nowrap">{String(it._id).slice(0,8)}…</TableCell>
+                              <TableCell className="font-mono text-xs whitespace-nowrap">{String(it._id).slice(0, 8)}…</TableCell>
                               <TableCell className="text-xs">
                                 <div className="max-w-[500px] truncate">{data.col1}</div>
                               </TableCell>
@@ -868,19 +868,19 @@ export default function AdminDataManagement() {
                     Showing {((categoryPage - 1) * categoryLimit) + 1}-{Math.min(categoryPage * categoryLimit, categoryTotal)} of {categoryTotal} items
                   </p>
                   <div className="flex items-center gap-2">
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => loadPage('prev')} 
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => loadPage('prev')}
                       disabled={categoryPage === 1}
                     >
                       Previous
                     </Button>
                     <span className="text-xs text-muted-foreground">Page {categoryPage} of {Math.ceil(categoryTotal / categoryLimit)}</span>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => loadPage('next')} 
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => loadPage('next')}
                       disabled={categoryPage >= Math.ceil(categoryTotal / categoryLimit)}
                     >
                       Next
@@ -904,9 +904,9 @@ export default function AdminDataManagement() {
                   <DialogTitle>Record details</DialogTitle>
                   <DialogDescription>Inspect the full content of this record.</DialogDescription>
                 </div>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
+                <Button
+                  size="sm"
+                  variant="outline"
                   onClick={() => setJsonViewMode(jsonViewMode === 'raw' ? 'tree' : 'raw')}
                 >
                   {jsonViewMode === 'raw' ? 'Tree View' : 'Raw JSON'}
@@ -920,7 +920,7 @@ export default function AdminDataManagement() {
                 </div>
               ) : (
                 <pre className="text-xs leading-relaxed whitespace-pre-wrap break-words">
-{detailItem ? JSON.stringify(detailItem, null, 2) : ''}
+                  {detailItem ? JSON.stringify(detailItem, null, 2) : ''}
                 </pre>
               )}
             </div>
@@ -935,10 +935,10 @@ export default function AdminDataManagement() {
               <p className="text-sm text-muted-foreground">Pre-populate development data with one click</p>
             </div>
             <div className="flex gap-2">
-                <Button onClick={() => setSeedDialogOpen(true)} disabled={seeding} variant="default">
-                  <Package className="mr-2 h-4 w-4" />
-                  Seed Products
-                </Button>
+              <Button onClick={() => setSeedDialogOpen(true)} disabled={seeding} variant="default">
+                <Package className="mr-2 h-4 w-4" />
+                Seed Products
+              </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" disabled={resetting}>
@@ -962,7 +962,7 @@ export default function AdminDataManagement() {
                       <div>
                         <div className="space-y-3">
                           <p className="text-sm">This will permanently delete ALL data except your admin account:</p>
-                        
+
                           <div className="space-y-2">
                             <p className="text-sm font-semibold">Business Data:</p>
                             <ul className="list-disc list-inside text-sm space-y-0.5 ml-2">
@@ -1098,8 +1098,8 @@ export default function AdminDataManagement() {
                   <div className="flex-1">
                     <p className="font-medium">Seed Products</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Click "Seed Products" to populate your database with sample products. 
-                      Each seeded item gets a unique ID starting with <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">SEED-</code> 
+                      Click "Seed Products" to populate your database with sample products.
+                      Each seeded item gets a unique ID starting with <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">SEED-</code>
                       so you can distinguish them from user-created data.
                     </p>
                   </div>
@@ -1124,8 +1124,8 @@ export default function AdminDataManagement() {
                   <div className="flex-1">
                     <p className="font-medium">Reset When Needed</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Click "Reset All" to wipe everything except your admin login. 
-                      Perfect for starting fresh or cleaning up after testing. 
+                      Click "Reset All" to wipe everything except your admin login.
+                      Perfect for starting fresh or cleaning up after testing.
                       <strong className="text-red-600"> This deletes ALL data!</strong>
                     </p>
                   </div>
@@ -1146,61 +1146,61 @@ export default function AdminDataManagement() {
         </TabsContent>
       </Tabs>
 
-        {/* Seed Products Dialog */}
-        <Dialog open={seedDialogOpen} onOpenChange={setSeedDialogOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Seed Products</DialogTitle>
-              <DialogDescription>Select which product categories to seed</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-3">
-                {['Electronics', 'Wearables', 'Apparel', 'Footwear'].map((category) => (
-                  <div key={category} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={category}
-                      checked={selectedCategories.includes(category)}
-                      onCheckedChange={() => toggleCategory(category)}
-                    />
-                    <Label
-                      htmlFor={category}
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                    >
-                      {category}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-              <div className="bg-muted/50 rounded-lg p-3">
-                <p className="text-xs text-muted-foreground">
-                  <strong>{selectedCategories.length}</strong> {selectedCategories.length === 1 ? 'category' : 'categories'} selected. 
-                  Seeded products will have IDs starting with <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">SEED-</code>
-                </p>
-              </div>
+      {/* Seed Products Dialog */}
+      <Dialog open={seedDialogOpen} onOpenChange={setSeedDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Seed Products</DialogTitle>
+            <DialogDescription>Select which product categories to seed</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-3">
+              {['Electronics', 'Wearables', 'Apparel', 'Footwear'].map((category) => (
+                <div key={category} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={category}
+                    checked={selectedCategories.includes(category)}
+                    onCheckedChange={() => toggleCategory(category)}
+                  />
+                  <Label
+                    htmlFor={category}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    {category}
+                  </Label>
+                </div>
+              ))}
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setSeedDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleSeedProducts} 
-                disabled={seeding || selectedCategories.length === 0}
-              >
-                {seeding ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Seeding...
-                  </>
-                ) : (
-                  <>
-                    <Package className="mr-2 h-4 w-4" />
-                    Seed Products
-                  </>
-                )}
-              </Button>
+            <div className="bg-muted/50 rounded-lg p-3">
+              <p className="text-xs text-muted-foreground">
+                <strong>{selectedCategories.length}</strong> {selectedCategories.length === 1 ? 'category' : 'categories'} selected.
+                Seeded products will have IDs starting with <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">SEED-</code>
+              </p>
             </div>
-          </DialogContent>
-        </Dialog>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setSeedDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSeedProducts}
+              disabled={seeding || selectedCategories.length === 0}
+            >
+              {seeding ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Seeding...
+                </>
+              ) : (
+                <>
+                  <Package className="mr-2 h-4 w-4" />
+                  Seed Products
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

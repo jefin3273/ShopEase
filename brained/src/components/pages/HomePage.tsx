@@ -4,8 +4,12 @@ import Banner from './Banner';
 import { useEffect, useState } from 'react';
 import { getFeatured } from '../../services/products';
 import trackingClient from '../../services/trackingClient';
+import { useCustomerOnly } from '../../hooks/useRouteProtection';
 
 function HomePage() {
+    // Protect this route - admins should not access home page
+    useCustomerOnly();
+
     const navigate = useNavigate();
     const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -29,7 +33,7 @@ function HomePage() {
             <Navbar />
 
             {/* Spacer for fixed navbar */}
-             <div className="h-10 sm:h-4"></div> 
+            <div className="h-10 sm:h-4"></div>
 
             {/* Banner Section */}
             <Banner />
@@ -156,7 +160,7 @@ function HomePage() {
                                 <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 sm:mb-4">
                                     Free Shipping
                                 </h3>
-                                
+
                                 <p className="text-base sm:text-lg text-gray-700 mb-6 sm:mb-8 leading-relaxed">
                                     Free shipping on all orders over $50. No code needed, automatically applied.
                                 </p>

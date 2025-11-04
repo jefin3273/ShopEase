@@ -188,7 +188,7 @@ exports.logout = async (req, res) => {
 };
 
 // middleware to protect routes
-exports.authenticate = (req, res, next) => {
+exports.authenticate = async (req, res, next) => {
   const auth = req.headers.authorization;
   if (!auth) return res.status(401).json({ message: 'No token' });
   const token = auth.split(' ')[1];
@@ -196,6 +196,9 @@ exports.authenticate = (req, res, next) => {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     req.userId = payload.id;
     req.userRole = payload.role;
+    // Fetch user object for controllers that need it
+    const User = require('../models/User');
+    req.user = await User.findById(payload.id).select('-password -refreshTokens');
     next();
   } catch (e) {
     return res.status(401).json({ message: 'Invalid or expired token' });
