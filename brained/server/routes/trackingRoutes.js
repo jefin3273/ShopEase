@@ -177,8 +177,56 @@ router.delete('/sessions/:sessionId', async (req, res) => {
 
 // ===== USER INTERACTION ENDPOINTS =====
 
-// Record user interaction (click, scroll, hover, etc.)
+// Record single user interaction (click, scroll, hover, etc.)
 router.post('/interaction', async (req, res) => {
+  try {
+    const {
+      sessionId,
+      userId,
+      eventType,
+      eventName,
+      pageURL,
+      metadata,
+    } = req.body;
+
+    if (!sessionId || !eventType || !pageURL) {
+      return res.status(400).json({
+        message: 'sessionId, eventType, and pageURL are required',
+      });
+    }
+
+    const interaction = new UserInteraction({
+      sessionId,
+      userId: userId || 'anonymous',
+      projectId: req.body.projectId || 'default',
+      eventType,
+      eventName: eventName || eventType,
+      pageURL,
+      pageTitle: metadata?.pageTitle,
+      referrer: metadata?.referrer,
+      metadata: metadata || {},
+    });
+
+    await interaction.save();
+
+    // Emit real-time event via Socket.IO if available
+    if (global.io) {
+      global.io.to(`project-${interaction.projectId}`).emit('interaction', {
+        eventType,
+        pageURL,
+        timestamp: interaction.timestamp,
+      });
+    }
+
+    res.json({ message: 'Interaction recorded', id: interaction._id });
+  } catch (error) {
+    console.error('Error recording interaction:', error);
+    res.status(500).json({ message: 'Failed to record interaction', error: error.message });
+  }
+});
+
+// Record single interaction (alias for /interaction - supports plural form)
+router.post('/interactions', async (req, res) => {
   try {
     const {
       sessionId,
