@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PagePulse Performance Test Page</title>
+
+    <!-- Load PagePulse SDK -->
+    <script src="http://localhost:5000/pagepulse.js" data-project-id="test-website"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #2563eb;
+            margin-bottom: 20px;
+        }
+
+        .section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f9fafb;
+            border-left: 4px solid #2563eb;
+            border-radius: 4px;
+        }
+
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 10px 10px 10px 0;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        .error-btn {
+            background: #dc2626;
+        }
+
+        .error-btn:hover {
+            background: #b91c1c;
+        }
+
+        .info {
+            background: #dbeafe;
+            border: 1px solid #2563eb;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+
+        .success {
+            background: #d1fae5;
+            border: 1px solid #10b981;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            color: #065f46;
+        }
+
+        code {
+            background: #1f2937;
+            color: #10b981;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .large-image {
+            width: 100%;
+            max-width: 800px;
+            height: 400px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        #dynamic-content {
+            margin: 20px 0;
+            padding: 20px;
+            background: #fef3c7;
+            border-radius: 8px;
+            min-height: 100px;
+        }
+
+        .console-output {
+            background: #1f2937;
+            color: #10b981;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin: 15px 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .metric-display {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #e5e7eb;
+        }
+
+        .metric-card h3 {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .metric-card .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2563eb;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🚀 PagePulse Performance Testing Suite</h1>
+
+        <div class="success">
+            <strong>✅ PagePulse SDK Loaded Successfully!</strong><br>
+            All performance metrics are being tracked automatically.
+        </div>
+
+        <div class="info">
+            <strong>ℹ️ What's Being Tracked:</strong>
+            <ul>
+                <li><strong>TTFB</strong> - Time to First Byte (server response)</li>
+                <li><strong>FCP</strong> - First Contentful Paint</li>
+                <li><strong>LCP</strong> - Largest Contentful Paint</li>
+                <li><strong>CLS</strong> - Cumulative Layout Shift</li>
+                <li><strong>INP</strong> - Interaction to Next Paint (modern browsers)</li>
+                <li><strong>FID</strong> - First Input Delay (fallback)</li>
+                <li><strong>JS Errors</strong> - Runtime errors and promise rejections</li>
+                <li><strong>API Calls</strong> - Latency and response codes</li>
+            </ul>
+        </div>
+
+        <!-- Performance Metrics Display -->
+        <div class="section">
+            <h2>📊 Real-Time Metrics</h2>
+            <div id="metrics" class="metric-display"></div>
+        </div>
+
+        <!-- Test JavaScript Errors -->
+        <div class="section">
+            <h2>🐛 Test Error Tracking</h2>
+            <p>Click these buttons to generate errors that will be tracked:</p>
+            <button class="error-btn" onclick="testRuntimeError()">Throw Runtime Error</button>
+            <button class="error-btn" onclick="testPromiseRejection()">Unhandled Promise Rejection</button>
+            <button class="error-btn" onclick="testReferenceError()">Reference Error</button>
+            <div id="error-log" class="console-output">Error log will appear here...</div>
+        </div>
+
+        <!-- Test API Calls -->
+        <div class="section">
+            <h2>🌐 Test API Monitoring</h2>
+            <p>These buttons make real API calls to test latency tracking:</p>
+            <button onclick="testSuccessfulAPI()">✅ Successful API Call</button>
+            <button onclick="testFailedAPI()">❌ Failed API Call (404)</button>
+            <button onclick="testMultipleAPIs()">🔄 Multiple API Calls</button>
+            <button onclick="testSlowAPI()">🐌 Slow API Call</button>
+            <div id="api-log" class="console-output">API call log will appear here...</div>
+        </div>
+
+        <!-- Test Layout Shift (CLS) -->
+        <div class="section">
+            <h2>📐 Test Layout Shift (CLS)</h2>
+            <p>This will trigger a layout shift that will be tracked:</p>
+            <button onclick="triggerLayoutShift()">Trigger Layout Shift</button>
+            <div id="dynamic-content">
+                <p>Dynamic content area - layout shifts will be tracked here</p>
+            </div>
+        </div>
+
+        <!-- Large Content for LCP -->
+        <div class="section">
+            <h2>🖼️ Large Content (LCP Test)</h2>
+            <p>This large element affects the Largest Contentful Paint metric:</p>
+            <div class="large-image">
+                Large Content Element<br>
+                (Simulates main image/content)
+            </div>
+        </div>
+
+        <!-- Performance Observer Results -->
+        <div class="section">
+            <h2>📈 Collected Performance Data</h2>
+            <div id="performance-data" class="console-output">
+                Performance data will be logged here as it's collected...
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="section">
+            <h2>📖 How to View Results</h2>
+            <ol>
+                <li>Perform actions on this page (click buttons, scroll, navigate)</li>
+                <li>Wait 10 seconds for automatic metric submission</li>
+                <li>Go to <code>http://localhost:5173/admin/analytics/performance</code></li>
+                <li>You'll see all tracked metrics in the dashboard</li>
+                <li>Check the following in the dashboard:
+                    <ul>
+                        <li>Core Web Vitals cards with ratings</li>
+                        <li>Performance trends chart</li>
+                        <li>JavaScript errors list</li>
+                        <li>API performance table</li>
+                        <li>Device breakdown</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // Log to custom console
+        function logToConsole(elementId, message, type = 'info') {
+            const el = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#10b981';
+            el.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            el.scrollTop = el.scrollHeight;
+        }
+
+        // Display real-time metrics
+        function displayMetrics() {
+            const metricsDiv = document.getElementById('metrics');
+
+            if (window.performance && window.performance.getEntriesByType) {
+                const navigation = performance.getEntriesByType('navigation')[0];
+                const paint = performance.getEntriesByType('paint');
+
+                let html = '';
+
+                // TTFB
+                if (navigation) {
+                    const ttfb = Math.round(navigation.responseStart - navigation.requestStart);
+                    html += `
+            <div class="metric-card">
+              <h3>TTFB</h3>
+              <div class="value">${ttfb}ms</div>
+            </div>
+          `;
+                }
+
+                // FCP
+                const fcp = paint.find(p => p.name === 'first-contentful-paint');
+                if (fcp) {
+                    html += `
+            <div class="metric-card">
+              <h3>FCP</h3>
+              <div class="value">${Math.round(fcp.startTime)}ms</div>
+            </div>
+          `;
+                }
+
+                // Load Time
+                if (navigation) {
+                    const loadTime = Math.round(navigation.loadEventEnd - navigation.fetchStart);
+                    html += `
+            <div class="metric-card">
+              <h3>Load Time</h3>
+              <div class="value">${loadTime}ms</div>
+            </div>
+          `;
+                }
+
+                metricsDiv.innerHTML = html || '<p>Collecting metrics...</p>';
+            }
+        }
+
+        // Error testing functions
+        function testRuntimeError() {
+            try {
+                throw new Error('Test Runtime Error - This is tracked by PagePulse!');
+            } catch (e) {
+                logToConsole('error-log', `❌ Threw error: ${e.message}`, 'error');
+                throw e; // Re-throw to be caught by PagePulse
+            }
+        }
+
+        function testPromiseRejection() {
+            Promise.reject('Test Promise Rejection - This is tracked!');
+            logToConsole('error-log', '❌ Created unhandled promise rejection', 'error');
+        }
+
+        function testReferenceError() {
+            try {
+                // This will cause a ReferenceError
+                nonExistentVariable.doSomething();
+            } catch (e) {
+                logToConsole('error-log', `❌ Reference Error: ${e.message}`, 'error');
+                throw e;
+            }
+        }
+
+        // API testing functions
+        async function testSuccessfulAPI() {
+            const start = performance.now();
+            try {
+                await fetch('/api/products');
+                const duration = Math.round(performance.now() - start);
+                logToConsole('api-log', `✅ Successful API call to /api/products (${duration}ms)`, 'success');
+            } catch (e) {
+                logToConsole('api-log', `❌ Failed: ${e.message}`, 'error');
+            }
+        }
+
+        async function testFailedAPI() {
+            const start = performance.now();
+            try {
+                await fetch('/api/nonexistent-endpoint');
+                const duration = Math.round(performance.now() - start);
+                logToConsole('api-log', `❌ Failed API call (404) - Duration: ${duration}ms`, 'error');
+            } catch (e) {
+                logToConsole('api-log', `❌ Network error: ${e.message}`, 'error');
+            }
+        }
+
+        async function testMultipleAPIs() {
+            logToConsole('api-log', '🔄 Making 3 API calls...', 'info');
+            await testSuccessfulAPI();
+            await testSuccessfulAPI();
+            await testSuccessfulAPI();
+        }
+
+        async function testSlowAPI() {
+            logToConsole('api-log', '🐌 Simulating slow API call...', 'info');
+            const start = performance.now();
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            const duration = Math.round(performance.now() - start);
+            logToConsole('api-log', `🐌 Slow operation completed (${duration}ms)`, 'info');
+        }
+
+        // Layout shift testing
+        function triggerLayoutShift() {
+            const el = document.getElementById('dynamic-content');
+            const newContent = document.createElement('div');
+            newContent.style.height = '200px';
+            newContent.style.background = '#3b82f6';
+            newContent.style.margin = '20px 0';
+            newContent.style.borderRadius = '8px';
+            newContent.style.display = 'flex';
+            newContent.style.alignItems = 'center';
+            newContent.style.justifyContent = 'center';
+            newContent.style.color = 'white';
+            newContent.textContent = 'New content inserted - CLS tracked!';
+            el.insertBefore(newContent, el.firstChild);
+            logToConsole('performance-data', '📐 Layout shift triggered - CLS will be calculated', 'info');
+        }
+
+        // Monitor and log PagePulse activity
+        function monitorPagePulse() {
+            if (window.PagePulse) {
+                logToConsole('performance-data', '✅ PagePulse SDK initialized', 'success');
+                logToConsole('performance-data', '📊 Tracking: TTFB, FCP, LCP, CLS, INP/FID', 'info');
+                logToConsole('performance-data', '🐛 Error tracking: Active', 'info');
+                logToConsole('performance-data', '🌐 API monitoring: Active', 'info');
+                logToConsole('performance-data', '⏱️ Metrics will be sent in ~10 seconds', 'info');
+            } else {
+                logToConsole('performance-data', '❌ PagePulse SDK not found', 'error');
+            }
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            displayMetrics();
+            setTimeout(displayMetrics, 2000);
+            monitorPagePulse();
+
+            // Log when metrics are sent
+            setInterval(() => {
+                logToConsole('performance-data', '📤 Performance metrics sent to server', 'success');
+            }, 10000);
+        });
+
+        // Log initial page load
+        logToConsole('performance-data', '🚀 Page loaded - collecting metrics...', 'info');
+    </script>
+</body>
+
+</html>

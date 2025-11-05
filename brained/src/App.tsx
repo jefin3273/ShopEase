@@ -25,7 +25,7 @@ import RealTimeAnalyticsDashboard from "./pages/Admin/RealTimeAnalyticsDashboard
 import RecordingsList from "./pages/Admin/RecordingsList";
 import SessionReplayPlayer from "./pages/Admin/SessionReplayPlayer";
 import HeatmapVisualization from "./pages/Admin/HeatmapVisualization";
-import PerformanceAnalytics from "./pages/Admin/PerformanceAnalytics";
+import PerformanceAnalytics from "./pages/Admin/PerformanceAnalyticsDashboard";
 import FunnelAnalysis from "./pages/Admin/FunnelAnalysis";
 import CohortAnalysis from "./pages/Admin/CohortAnalysis";
 import ABTesting from "./pages/Admin/ABTesting";
@@ -47,7 +47,7 @@ import FunnelAnalysis2 from "./pages/Admin/FunnelAnalysis2";
 function App() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
-  
+
   // Get auth context to determine if user is admin
   let auth: any = null;
   try {
@@ -60,16 +60,16 @@ function App() {
   useEffect(() => {
     // Check if tracking is enabled (admin can toggle this)
     const trackingEnabled = localStorage.getItem('tracking_enabled') !== 'false';
-    
+
     // Check if user has opted out of tracking
     const hasOptedOut = localStorage.getItem('analytics_opt_out') === 'true';
-    
+
     // Don't track admin users
     const isAdmin = auth?.user?.role === 'admin';
-    
+
     // Update tracking client with admin status
     trackingClient.updateAdminStatus(!!isAdmin);
-    
+
     if (!trackingEnabled || hasOptedOut || isAdmin) {
       analyticsManager.destroy();
       return;
@@ -95,7 +95,7 @@ function App() {
   useEffect(() => {
     const isAdmin = auth?.user?.role === 'admin';
     const trackingEnabled = localStorage.getItem('tracking_enabled') !== 'false';
-    
+
     // Don't track admin pages or admin users
     if (!isAdminRoute && !isAdmin && trackingEnabled) {
       analyticsManager.trackPageView();
@@ -152,7 +152,7 @@ function App() {
               <Route path="analytics/funnels" element={<FunnelAnalysis />} />
               <Route path="analytics/cohorts" element={<CohortAnalysis />} />
               <Route path="analytics/experiments" element={<ABTesting />} />
-              <Route path="tracking" element={<TrackingSetup />} /> 
+              <Route path="tracking" element={<TrackingSetup />} />
               <Route path="analytics/flags" element={<FeatureFlags />} />
               <Route path="analytics/activity" element={<ActivityFeed />} />
               <Route path="analytics/people" element={<PeopleTab />} />

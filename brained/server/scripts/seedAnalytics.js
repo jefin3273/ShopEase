@@ -267,20 +267,82 @@ async function seedPerformanceMetricsSample(count = 200) {
     { device: 'desktop', browser: 'Chrome', os: 'Windows' },
     { device: 'mobile', browser: 'Safari', os: 'iOS' },
     { device: 'desktop', browser: 'Firefox', os: 'macOS' },
+    { device: 'mobile', browser: 'Chrome', os: 'Android' },
+    { device: 'tablet', browser: 'Safari', os: 'iOS' },
   ];
+
+  const apiEndpoints = [
+    '/api/products',
+    '/api/cart',
+    '/api/orders',
+    '/api/analytics/events',
+    '/api/sessions/start'
+  ];
+
   const docs = [];
   const now = Date.now();
   for (let i = 0; i < count; i++) {
     const pageURL = randomFrom(pages);
     const device = randomFrom(devices);
     const timestamp = new Date(now - randInt(1000 * 60 * 60 * 24 * 30)); // last 30 days
+
+    // Realistic performance metrics with device-based variations
+    const isMobile = device.device === 'mobile';
+    const baseMultiplier = isMobile ? 1.5 : 1.0;
+
     // realistic-ish metrics
-    const fcp = Math.round(500 + Math.random() * 2000);
-    const lcp = Math.round(fcp + 200 + Math.random() * 1500);
-    const ttfb = Math.round(50 + Math.random() * 400);
+    const fcp = Math.round((500 + Math.random() * 2000) * baseMultiplier);
+    const lcp = Math.round((fcp + 200 + Math.random() * 1500) * baseMultiplier);
+    const ttfb = Math.round((50 + Math.random() * 400) * baseMultiplier);
     const cls = parseFloat((Math.random() * 0.25).toFixed(3));
-    const jsErrors = Math.random() < 0.05 ? [{ message: 'TypeError: x is not a function', stack: 'at ...' }] : [];
-    docs.push({ pageURL, FCP: fcp, LCP: lcp, TTFB: ttfb, CLS: cls, jsErrors, timestamp, deviceInfo: device });
+    const inp = Math.round(Math.random() * 300);
+    const fid = Math.round(Math.random() * 100);
+    const loadTime = Math.round((1000 + Math.random() * 3000) * baseMultiplier);
+    const domReadyTime = Math.round((500 + Math.random() * 2000) * baseMultiplier);
+    const dnsTime = Math.round(10 + Math.random() * 100);
+
+    // Generate API calls
+    const numApiCalls = randInt(5) + 1;
+    const apiCalls = [];
+    for (let j = 0; j < numApiCalls; j++) {
+      const status = Math.random() > 0.95 ? (Math.random() > 0.5 ? 404 : 500) : 200;
+      apiCalls.push({
+        url: randomFrom(apiEndpoints),
+        method: Math.random() > 0.3 ? 'GET' : 'POST',
+        status,
+        duration: Math.round(Math.random() * 500 + 50),
+        timestamp: new Date(timestamp.getTime() + randInt(5000))
+      });
+    }
+
+    const jsErrors = Math.random() < 0.05 ? [{
+      message: 'TypeError: x is not a function',
+      source: pageURL,
+      line: randInt(1000),
+      column: randInt(100),
+      stack: 'at ...',
+      timestamp: new Date(timestamp.getTime() + randInt(3000))
+    }] : [];
+
+    docs.push({
+      sessionId: uuidv4(),
+      userId: uuidv4(),
+      projectId: PROJECT_ID,
+      pageURL,
+      FCP: fcp,
+      LCP: lcp,
+      TTFB: ttfb,
+      CLS: cls,
+      INP: inp,
+      FID: fid,
+      loadTime,
+      domReadyTime,
+      dnsTime,
+      jsErrors,
+      apiCalls,
+      timestamp,
+      deviceInfo: device
+    });
   }
   if (docs.length) {
     await PerformanceMetrics.insertMany(docs);
@@ -409,7 +471,7 @@ async function run() {
     process.exit(0);
   } catch (err) {
     console.error(err);
-    try { await mongoose.disconnect(); } catch (_) {}
+    try { await mongoose.disconnect(); } catch (_) { }
     process.exit(1);
   }
 }

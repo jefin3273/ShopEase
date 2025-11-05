@@ -28,6 +28,13 @@ function sanitize(obj) {
 router.post('/events', async (req, res) => {
   try {
     const { eventType, element, pageURL, timestamp, metadata, sessionId, userId } = req.body;
+
+    // Validate required fields
+    if (!eventType) {
+      console.error('Missing eventType in request body:', req.body);
+      return res.status(400).json({ message: 'eventType is required' });
+    }
+
     // prefer deviceInfo from middleware (parsed UA) but allow client-supplied deviceInfo
     const deviceInfo = req.deviceInfo || req.body.deviceInfo;
     const cleanMeta = sanitize(metadata || {});
@@ -111,13 +118,60 @@ router.get('/seed', async (req, res) => {
 // POST /api/analytics/performance
 router.post('/performance', async (req, res) => {
   try {
-    const { pageURL, TTFB, LCP, FCP, CLS, jsErrors, timestamp, sessionId } = req.body;
-    const deviceInfo = req.deviceInfo || req.body.deviceInfo;
-    const doc = await PerformanceMetrics.create({ pageURL, TTFB, LCP, FCP, CLS, jsErrors, timestamp, deviceInfo });
+    const {
+      pageURL,
+      TTFB,
+      LCP,
+      FCP,
+      CLS,
+      INP,
+      FID,
+      loadTime,
+      domReadyTime,
+      dnsTime,
+      jsErrors,
+      apiCalls,
+      timestamp,
+      sessionId,
+      userId,
+      projectId
+    } = req.body;
 
-    // Track performance metrics with custom analytics
-    const userId = req.userId || req.body.userId || 'anonymous';
-    await analyticsService.captureEvent(userId, sessionId, {
+    // Validate required fields
+    if (!pageURL) {
+      console.error('Missing pageURL in performance metrics:', req.body);
+      return res.status(400).json({ message: 'pageURL is required' });
+    }
+
+    // Handle empty body (from beacon API issues)
+    if (Object.keys(req.body).length === 0) {
+      console.error('Empty request body received');
+      return res.status(400).json({ message: 'Request body is empty' });
+    }
+
+    const deviceInfo = req.deviceInfo || req.body.deviceInfo;
+
+    const doc = await PerformanceMetrics.create({
+      pageURL,
+      TTFB,
+      LCP,
+      FCP,
+      CLS,
+      INP,
+      FID,
+      loadTime,
+      domReadyTime,
+      dnsTime,
+      jsErrors,
+      apiCalls,
+      timestamp,
+      deviceInfo,
+      sessionId,
+      userId,
+      projectId: projectId || 'default'
+    });    // Track performance metrics with custom analytics
+    const distinctId = userId || req.userId || 'anonymous';
+    await analyticsService.captureEvent(distinctId, sessionId, {
       eventType: 'performance',
       eventName: 'performance_metrics',
       pageURL,
@@ -126,10 +180,16 @@ router.post('/performance', async (req, res) => {
         LCP,
         FCP,
         CLS,
-        jsErrors,
+        INP,
+        FID,
+        loadTime,
+        domReadyTime,
+        dnsTime,
+        jsErrorCount: jsErrors?.length || 0,
+        apiCallCount: apiCalls?.length || 0,
         timestamp
       }
-    });
+    }).catch(e => console.error('Analytics service error:', e));
 
     res.status(201).json(doc);
   } catch (err) {
@@ -328,7 +388,8 @@ router.get('/performance/summary', async (req, res) => {
       if (to) match.timestamp.$lte = new Date(to);
     }
     if (pageURL) match.pageURL = pageURL;
-    // average metrics grouped by pageURL
+
+    // Average metrics grouped by pageURL
     const agg = await PerformanceMetrics.aggregate([
       { $match: match },
       {
@@ -338,10 +399,34 @@ router.get('/performance/summary', async (req, res) => {
           avgLCP: { $avg: '$LCP' },
           avgFCP: { $avg: '$FCP' },
           avgCLS: { $avg: '$CLS' },
+          avgINP: { $avg: '$INP' },
+          avgFID: { $avg: '$FID' },
+          avgLoadTime: { $avg: '$loadTime' },
+          avgDomReadyTime: { $avg: '$domReadyTime' },
+          avgDnsTime: { $avg: '$dnsTime' },
+          totalJsErrors: { $sum: { $size: { $ifNull: ['$jsErrors', []] } } },
+          totalApiCalls: { $sum: { $size: { $ifNull: ['$apiCalls', []] } } },
           count: { $sum: 1 }
         }
       },
-      { $project: { _id: 0, pageURL: '$_id', avgTTFB: 1, avgLCP: 1, avgFCP: 1, avgCLS: 1, count: 1 } },
+      {
+        $project: {
+          _id: 0,
+          pageURL: '$_id',
+          avgTTFB: 1,
+          avgLCP: 1,
+          avgFCP: 1,
+          avgCLS: 1,
+          avgINP: 1,
+          avgFID: 1,
+          avgLoadTime: 1,
+          avgDomReadyTime: 1,
+          avgDnsTime: 1,
+          totalJsErrors: 1,
+          totalApiCalls: 1,
+          count: 1
+        }
+      },
       { $sort: { count: -1 } }
     ]);
 
@@ -349,6 +434,137 @@ router.get('/performance/summary', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Failed to compute performance summaries' });
+  }
+});
+
+// GET /api/analytics/performance/detailed - Detailed performance analytics
+router.get('/performance/detailed', async (req, res) => {
+  try {
+    const { from, to, pageURL } = req.query;
+    const match = {};
+    if (from || to) {
+      match.timestamp = {};
+      if (from) match.timestamp.$gte = new Date(from);
+      if (to) match.timestamp.$lte = new Date(to);
+    }
+    if (pageURL) match.pageURL = pageURL;
+
+    // Get overall statistics
+    const stats = await PerformanceMetrics.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          avgTTFB: { $avg: '$TTFB' },
+          avgLCP: { $avg: '$LCP' },
+          avgFCP: { $avg: '$FCP' },
+          avgCLS: { $avg: '$CLS' },
+          avgINP: { $avg: '$INP' },
+          avgFID: { $avg: '$FID' },
+          avgLoadTime: { $avg: '$loadTime' },
+          avgDomReadyTime: { $avg: '$domReadyTime' },
+          avgDnsTime: { $avg: '$dnsTime' },
+
+          p50TTFB: { $percentile: { input: '$TTFB', p: [0.5], method: 'approximate' } },
+          p75TTFB: { $percentile: { input: '$TTFB', p: [0.75], method: 'approximate' } },
+          p95TTFB: { $percentile: { input: '$TTFB', p: [0.95], method: 'approximate' } },
+
+          p50LCP: { $percentile: { input: '$LCP', p: [0.5], method: 'approximate' } },
+          p75LCP: { $percentile: { input: '$LCP', p: [0.75], method: 'approximate' } },
+          p95LCP: { $percentile: { input: '$LCP', p: [0.95], method: 'approximate' } },
+
+          p50FCP: { $percentile: { input: '$FCP', p: [0.5], method: 'approximate' } },
+          p75FCP: { $percentile: { input: '$FCP', p: [0.75], method: 'approximate' } },
+          p95FCP: { $percentile: { input: '$FCP', p: [0.95], method: 'approximate' } },
+
+          totalJsErrors: { $sum: { $size: { $ifNull: ['$jsErrors', []] } } },
+          totalApiCalls: { $sum: { $size: { $ifNull: ['$apiCalls', []] } } },
+          totalSamples: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Get error details
+    const errorDetails = await PerformanceMetrics.aggregate([
+      { $match: match },
+      { $unwind: { path: '$jsErrors', preserveNullAndEmptyArrays: false } },
+      {
+        $group: {
+          _id: '$jsErrors.message',
+          count: { $sum: 1 },
+          lastSeen: { $max: '$jsErrors.timestamp' }
+        }
+      },
+      { $sort: { count: -1 } },
+      { $limit: 10 }
+    ]);
+
+    // Get API call statistics
+    const apiStats = await PerformanceMetrics.aggregate([
+      { $match: match },
+      { $unwind: { path: '$apiCalls', preserveNullAndEmptyArrays: false } },
+      {
+        $group: {
+          _id: '$apiCalls.url',
+          avgDuration: { $avg: '$apiCalls.duration' },
+          maxDuration: { $max: '$apiCalls.duration' },
+          minDuration: { $min: '$apiCalls.duration' },
+          count: { $sum: 1 },
+          errorCount: {
+            $sum: { $cond: [{ $or: [{ $eq: ['$apiCalls.status', 0] }, { $gte: ['$apiCalls.status', 400] }] }, 1, 0] }
+          }
+        }
+      },
+      { $sort: { count: -1 } },
+      { $limit: 20 }
+    ]);
+
+    // Device breakdown
+    const deviceBreakdown = await PerformanceMetrics.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: '$deviceInfo.device',
+          avgLCP: { $avg: '$LCP' },
+          avgFCP: { $avg: '$FCP' },
+          avgTTFB: { $avg: '$TTFB' },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Performance over time
+    const timeSeriesData = await PerformanceMetrics.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$timestamp' },
+            month: { $month: '$timestamp' },
+            day: { $dayOfMonth: '$timestamp' },
+            hour: { $hour: '$timestamp' }
+          },
+          avgTTFB: { $avg: '$TTFB' },
+          avgLCP: { $avg: '$LCP' },
+          avgFCP: { $avg: '$FCP' },
+          avgCLS: { $avg: '$CLS' },
+          avgINP: { $avg: '$INP' },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1, '_id.hour': 1 } }
+    ]);
+
+    res.json({
+      stats: stats[0] || {},
+      errorDetails,
+      apiStats,
+      deviceBreakdown,
+      timeSeriesData
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to compute detailed performance analytics' });
   }
 });
 

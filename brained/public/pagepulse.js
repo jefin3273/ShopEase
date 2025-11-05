@@ -4,7 +4,7 @@
  * Usage: <script src="https://yourserver.com/pagepulse.js" data-project-id="your-project-id"></script>
  */
 
-(function() {
+(function () {
   'use strict';
 
   // Configuration
@@ -29,7 +29,7 @@
     getDeviceInfo: () => {
       const ua = navigator.userAgent;
       let deviceType = 'desktop';
-      
+
       if (/mobile/i.test(ua)) deviceType = 'mobile';
       else if (/tablet|ipad/i.test(ua)) deviceType = 'tablet';
 
@@ -62,9 +62,21 @@
     sendBeacon: async (endpoint, data) => {
       try {
         const url = `${config.apiUrl}${endpoint}`;
-        
+
         if (navigator.sendBeacon) {
-          navigator.sendBeacon(url, JSON.stringify(data));
+          // sendBeacon requires a Blob with proper content type for JSON
+          const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+          const sent = navigator.sendBeacon(url, blob);
+
+          if (!sent) {
+            // Fallback to fetch if sendBeacon fails
+            await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(data),
+              keepalive: true
+            });
+          }
         } else {
           await fetch(url, {
             method: 'POST',
@@ -85,7 +97,7 @@
       // Check if session exists in localStorage
       const storedSessionId = localStorage.getItem('pagepulse_session');
       const storedUserId = localStorage.getItem('pagepulse_user');
-      
+
       if (storedSessionId) {
         config.sessionId = storedSessionId;
         config.userId = storedUserId;
@@ -100,7 +112,7 @@
       localStorage.setItem('pagepulse_user', config.userId);
 
       // Send session start event
-      await utils.sendBeacon('/sessions/start', {
+      await utils.sendBeacon('/api/sessions/start', {
         userId: config.userId,
         projectId: config.projectId,
         entryPage: window.location.href,
@@ -114,7 +126,7 @@
     update: async (pageData) => {
       if (!config.sessionId) return;
 
-      await utils.sendBeacon(`/sessions/${config.sessionId}`, {
+      await utils.sendBeacon(`/api/sessions/${config.sessionId}/end`, {
         pageURL: pageData.url || window.location.href,
         pageTitle: pageData.title || document.title,
         timeOnPage: pageData.timeOnPage || 0,
@@ -127,7 +139,7 @@
       if (!config.sessionId) return;
 
       await utils.sendBeacon(`/sessions/${config.sessionId}/end`, {});
-      
+
       // Clear session
       localStorage.removeItem('pagepulse_session');
     },
@@ -168,7 +180,7 @@
 
     beforeUnload: () => {
       const timeOnPage = Math.floor((Date.now() - pageTracker.startTime) / 1000);
-      
+
       session.update({
         url: window.location.href,
         title: document.title,
@@ -191,7 +203,7 @@
 
     trackClick: (e) => {
       const target = e.target;
-      
+
       utils.sendBeacon('/analytics/events', {
         sessionId: config.sessionId,
         userId: config.userId,
@@ -214,7 +226,7 @@
 
     trackFormSubmit: (e) => {
       const form = e.target;
-      
+
       utils.sendBeacon('/analytics/events', {
         sessionId: config.sessionId,
         userId: config.userId,
@@ -244,39 +256,337 @@
 
   // Performance tracking
   const performanceTracker = {
+    metrics: {
+      TTFB: null,
+      FCP: null,
+      LCP: null,
+      CLS: null,
+      INP: null,
+      FID: null,
+      loadTime: null,
+      domReadyTime: null,
+      dnsTime: null,
+      apiCalls: [],
+      jsErrors: [] // Move jsErrors to metrics object
+    },
+    clsObserver: null,
+    lcpObserver: null,
+    inpObserver: null,
+    fidObserver: null,
+
     init: () => {
-      window.addEventListener('load', performanceTracker.track);
+      // Track basic metrics on load
+      window.addEventListener('load', performanceTracker.trackBasicMetrics);
+
+      // Track Core Web Vitals
+      performanceTracker.trackTTFB();
+      performanceTracker.trackFCP();
+      performanceTracker.trackLCP();
+      performanceTracker.trackCLS();
+      performanceTracker.trackINP();
+      performanceTracker.trackFID();
+
+      // Track JS errors
+      performanceTracker.trackJSErrors();
+
+      // Track API calls
+      performanceTracker.trackAPILatency();
+
+      // Send metrics before page unload
+      window.addEventListener('beforeunload', () => {
+        performanceTracker.sendMetrics();
+      });
+
+      // Also send metrics after 10 seconds to capture early data
+      setTimeout(() => {
+        performanceTracker.sendMetrics();
+      }, 10000);
     },
 
-    track: () => {
-      if (!window.performance || !window.performance.timing) return;
+    trackBasicMetrics: () => {
+      if (!window.performance) return;
 
-      const timing = window.performance.timing;
-      const navigationStart = timing.navigationStart;
+      const navigation = performance.getEntriesByType('navigation')[0];
+      if (navigation) {
+        const nav = navigation;
+        performanceTracker.metrics.loadTime = nav.loadEventEnd - nav.fetchStart;
+        performanceTracker.metrics.domReadyTime = nav.domContentLoadedEventEnd - nav.fetchStart;
+        performanceTracker.metrics.dnsTime = nav.domainLookupEnd - nav.domainLookupStart;
+      }
+    },
 
+    trackTTFB: () => {
+      try {
+        const navigation = performance.getEntriesByType('navigation')[0];
+        if (navigation) {
+          performanceTracker.metrics.TTFB = navigation.responseStart - navigation.requestStart;
+        }
+      } catch (e) {
+        console.error('TTFB tracking error:', e);
+      }
+    },
+
+    trackFCP: () => {
+      try {
+        const observer = new PerformanceObserver((list) => {
+          const entries = list.getEntries();
+          for (const entry of entries) {
+            if (entry.name === 'first-contentful-paint') {
+              performanceTracker.metrics.FCP = entry.startTime;
+              observer.disconnect();
+              break;
+            }
+          }
+        });
+        observer.observe({ entryTypes: ['paint'] });
+      } catch (e) {
+        console.error('FCP tracking error:', e);
+      }
+    },
+
+    trackLCP: () => {
+      try {
+        if (!('PerformanceObserver' in window)) return;
+
+        const observer = new PerformanceObserver((list) => {
+          const entries = list.getEntries();
+          const lastEntry = entries[entries.length - 1];
+          performanceTracker.metrics.LCP = lastEntry.renderTime || lastEntry.loadTime;
+        });
+
+        observer.observe({ entryTypes: ['largest-contentful-paint'] });
+        performanceTracker.lcpObserver = observer;
+
+        // Stop observing after 5 seconds or on user interaction
+        const stopObserving = () => {
+          if (observer) observer.disconnect();
+        };
+        setTimeout(stopObserving, 5000);
+        ['keydown', 'click', 'scroll'].forEach(type => {
+          window.addEventListener(type, stopObserving, { once: true, capture: true });
+        });
+      } catch (e) {
+        console.error('LCP tracking error:', e);
+      }
+    },
+
+    trackCLS: () => {
+      try {
+        if (!('PerformanceObserver' in window)) return;
+
+        let clsValue = 0;
+        let sessionValue = 0;
+        let sessionEntries = [];
+
+        const observer = new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            if (!entry.hadRecentInput) {
+              const firstSessionEntry = sessionEntries[0];
+              const lastSessionEntry = sessionEntries[sessionEntries.length - 1];
+
+              if (sessionValue && entry.startTime - lastSessionEntry.startTime < 1000 && entry.startTime - firstSessionEntry.startTime < 5000) {
+                sessionValue += entry.value;
+                sessionEntries.push(entry);
+              } else {
+                sessionValue = entry.value;
+                sessionEntries = [entry];
+              }
+
+              if (sessionValue > clsValue) {
+                clsValue = sessionValue;
+                performanceTracker.metrics.CLS = clsValue;
+              }
+            }
+          }
+        });
+
+        observer.observe({ entryTypes: ['layout-shift'] });
+        performanceTracker.clsObserver = observer;
+      } catch (e) {
+        console.error('CLS tracking error:', e);
+      }
+    },
+
+    trackINP: () => {
+      try {
+        if (!('PerformanceObserver' in window)) return;
+
+        let maxDuration = 0;
+
+        const observer = new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            // INP considers all interactions
+            if (entry.duration > maxDuration) {
+              maxDuration = entry.duration;
+              performanceTracker.metrics.INP = maxDuration;
+            }
+          }
+        });
+
+        observer.observe({
+          entryTypes: ['event'],
+          buffered: true
+        });
+        performanceTracker.inpObserver = observer;
+      } catch (e) {
+        // Fallback to FID for older browsers
+        console.log('INP not supported, using FID fallback');
+      }
+    },
+
+    trackFID: () => {
+      try {
+        if (!('PerformanceObserver' in window)) return;
+
+        const observer = new PerformanceObserver((list) => {
+          const entries = list.getEntries();
+          for (const entry of entries) {
+            if (entry.name === 'first-input') {
+              performanceTracker.metrics.FID = entry.processingStart - entry.startTime;
+              observer.disconnect();
+              break;
+            }
+          }
+        });
+
+        observer.observe({ entryTypes: ['first-input'] });
+        performanceTracker.fidObserver = observer;
+      } catch (e) {
+        console.error('FID tracking error:', e);
+      }
+    },
+
+    trackJSErrors: () => {
+      window.addEventListener('error', (event) => {
+        const error = {
+          message: event.message,
+          source: event.filename,
+          line: event.lineno,
+          column: event.colno,
+          stack: event.error?.stack,
+          timestamp: new Date().toISOString()
+        };
+        performanceTracker.metrics.jsErrors.push(error);
+      });
+
+      window.addEventListener('unhandledrejection', (event) => {
+        const error = {
+          message: 'Unhandled Promise Rejection: ' + event.reason,
+          source: 'Promise',
+          timestamp: new Date().toISOString()
+        };
+        performanceTracker.metrics.jsErrors.push(error);
+      });
+    },
+
+    trackAPILatency: () => {
+      // Intercept fetch
+      const originalFetch = window.fetch;
+      window.fetch = async function (...args) {
+        const startTime = performance.now();
+        const url = typeof args[0] === 'string' ? args[0] : args[0].url;
+
+        try {
+          const response = await originalFetch.apply(this, args);
+          const endTime = performance.now();
+          const duration = endTime - startTime;
+
+          performanceTracker.metrics.apiCalls.push({
+            url,
+            method: args[1]?.method || 'GET',
+            status: response.status,
+            duration,
+            timestamp: new Date().toISOString()
+          });
+
+          return response;
+        } catch (error) {
+          const endTime = performance.now();
+          const duration = endTime - startTime;
+
+          performanceTracker.metrics.apiCalls.push({
+            url,
+            method: args[1]?.method || 'GET',
+            status: 0,
+            error: error.message,
+            duration,
+            timestamp: new Date().toISOString()
+          });
+
+          throw error;
+        }
+      };
+
+      // Intercept XMLHttpRequest
+      const originalOpen = XMLHttpRequest.prototype.open;
+      const originalSend = XMLHttpRequest.prototype.send;
+
+      XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+        this._perfTrack = { method, url, startTime: null };
+        return originalOpen.apply(this, [method, url, ...rest]);
+      };
+
+      XMLHttpRequest.prototype.send = function (...args) {
+        if (this._perfTrack) {
+          this._perfTrack.startTime = performance.now();
+
+          this.addEventListener('loadend', () => {
+            const endTime = performance.now();
+            const duration = endTime - this._perfTrack.startTime;
+
+            performanceTracker.metrics.apiCalls.push({
+              url: this._perfTrack.url,
+              method: this._perfTrack.method,
+              status: this.status,
+              duration,
+              timestamp: new Date().toISOString()
+            });
+          });
+        }
+
+        return originalSend.apply(this, args);
+      };
+    },
+
+    sendMetrics: () => {
       const metrics = {
         sessionId: config.sessionId,
         userId: config.userId,
         projectId: config.projectId,
         pageURL: window.location.href,
-        loadTime: timing.loadEventEnd - navigationStart,
-        domReadyTime: timing.domContentLoadedEventEnd - navigationStart,
-        firstPaint: timing.responseStart - navigationStart,
-        dnsTime: timing.domainLookupEnd - timing.domainLookupStart,
-        ttfb: timing.responseStart - timing.requestStart,
+        TTFB: performanceTracker.metrics.TTFB,
+        FCP: performanceTracker.metrics.FCP,
+        LCP: performanceTracker.metrics.LCP,
+        CLS: performanceTracker.metrics.CLS,
+        INP: performanceTracker.metrics.INP,
+        FID: performanceTracker.metrics.FID,
+        loadTime: performanceTracker.metrics.loadTime,
+        domReadyTime: performanceTracker.metrics.domReadyTime,
+        dnsTime: performanceTracker.metrics.dnsTime,
+        apiCalls: [...performanceTracker.metrics.apiCalls], // Send a copy
+        jsErrors: [...performanceTracker.metrics.jsErrors], // Send a copy
+        deviceInfo: utils.getDeviceInfo(),
+        timestamp: new Date().toISOString()
       };
 
-      setTimeout(() => {
-        utils.sendBeacon('/analytics/performance', metrics);
-      }, 1000);
+      utils.sendBeacon('/analytics/performance', metrics);
+
+      // Clear arrays after sending
+      performanceTracker.metrics.apiCalls = [];
+      performanceTracker.metrics.jsErrors = [];
     },
+
+    track: () => {
+      // Legacy method for backward compatibility
+      performanceTracker.sendMetrics();
+    }
   };
 
   // Public API
   window.PagePulse = {
     init: (options = {}) => {
       Object.assign(config, options);
-      
+
       // Start session
       session.start().then(() => {
         if (config.autoTrack) {
@@ -294,7 +604,7 @@
     identify: (userId, properties = {}) => {
       config.userId = userId;
       localStorage.setItem('pagepulse_user', userId);
-      
+
       eventTracker.track('User Identified', {
         userId,
         ...properties,
@@ -303,7 +613,7 @@
 
     page: (pageName, properties = {}) => {
       pageTracker.track();
-      
+
       eventTracker.track('Page View', {
         pageName: pageName || document.title,
         ...properties,
