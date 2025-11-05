@@ -309,11 +309,6 @@ cd NEURATHON-PagePulse/brained
 cd server
 npm install
 
-# Configure backend settings in server/config.js or directly in server.js:
-# - MONGO_URI: mongodb://localhost:27017/pagepulse
-# - PORT: 5000
-# - CLIENT_URLS: http://localhost:5173
-# - JWT_SECRET: your_secret_key_here
 
 # Start backend
 npm run dev
@@ -884,18 +879,6 @@ Place media under `brained/public/demo/` (or `docs/`) and update links:
 | Home → Product → Add to Cart | ![Add to Cart](brained/public/demo/add-to-cart.gif) |
 | Cart → Checkout → Success | ![Checkout Success](brained/public/demo/checkout-success.gif) |
 | Admin Analytics Overview | ![Analytics Overview](brained/public/demo/analytics-overview.png) |
-
----
-
-## 🧭 Next steps
-
-- Protect ingestion/export endpoints (JWT/API key)
-- Add pagination and time-range filters for summaries
-- Move large exports to background jobs (queue + object storage)
-- Add Docker + docker-compose for local MongoDB
-- Add tests (supertest + jest) and CI (GitHub Actions)
-
-If you want, I can add any of the above (auth, Docker, tests) in this repo.
 
 ---
 
