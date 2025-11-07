@@ -192,6 +192,11 @@ const AdminLayout: React.FC = () => {
       icon: Database,
     },
     {
+      title: 'Seed Data',
+      url: '/admin/data/seeds',
+      icon: Database,
+    },
+    {
       title: 'Tracking Setup',
       url: '/admin/tracking',
       icon: Settings,

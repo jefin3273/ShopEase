@@ -109,6 +109,13 @@ const sessionRecordingSchema = new mongoose.Schema({
   // Metadata for analysis
   tags: [String],
   notes: String,
+
+  // Seed tracking
+  isSeeded: {
+    type: Boolean,
+    default: false,
+    index: true,
+  },
   
 }, {
   timestamps: true,

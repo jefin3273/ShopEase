@@ -5,6 +5,17 @@ const User = require('../models/User');
 const Order = require('../models/Order');
 const { v4: uuidv4 } = require('uuid');
 
+// Import new seed functions
+const { seedAlertRules, clearSeededAlertRules } = require('../scripts/seedAlertRules');
+const { seedConsentMaskingRules, clearSeededConsentMaskingRules } = require('../scripts/seedConsentMasking');
+const { seedEnrichedUserEvents, clearSeededUserEvents } = require('../scripts/seedEnrichedEvents');
+const { seedEnrichedPerformanceMetrics, clearSeededPerformanceMetrics } = require('../scripts/seedEnrichedPerformance');
+const { seedEnrichedSessionRecordings, clearSeededSessionRecordings } = require('../scripts/seedEnrichedSessions');
+
+// Import models for seed status
+const AlertRule = require('../models/AlertRule');
+const ConsentMaskingRule = require('../models/ConsentMaskingRule');
+
 // Helper to generate seeded UUIDs (with SEED prefix)
 const generateSeededId = () => `SEED-${uuidv4()}`;
 
@@ -283,6 +294,155 @@ router.get('/stats', async (req, res) => {
   } catch (error) {
     console.error('Error fetching seed stats:', error);
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/seed/status
+ * Get counts of seeded vs manual data for all collections
+ */
+router.get('/status', async (req, res) => {
+  try {
+    const SessionRecording = require('../models/SessionRecording');
+    const UserEvent = require('../models/UserEvent');
+    const PerformanceMetrics = require('../models/PerformanceMetrics');
+
+    const status = {
+      alertRules: {
+        seeded: await AlertRule.countDocuments({ isSeeded: true }),
+        manual: await AlertRule.countDocuments({ isSeeded: { $ne: true } }),
+        total: await AlertRule.countDocuments(),
+      },
+      consentMaskingRules: {
+        seeded: await ConsentMaskingRule.countDocuments({ isSeeded: true }),
+        manual: await ConsentMaskingRule.countDocuments({ isSeeded: { $ne: true } }),
+        total: await ConsentMaskingRule.countDocuments(),
+      },
+      userEvents: {
+        seeded: await UserEvent.countDocuments({ isSeeded: true }),
+        manual: await UserEvent.countDocuments({ isSeeded: { $ne: true } }),
+        total: await UserEvent.countDocuments(),
+      },
+      performanceMetrics: {
+        seeded: await PerformanceMetrics.countDocuments({ isSeeded: true }),
+        manual: await PerformanceMetrics.countDocuments({ isSeeded: { $ne: true } }),
+        total: await PerformanceMetrics.countDocuments(),
+      },
+      sessionRecordings: {
+        seeded: await SessionRecording.countDocuments({ isSeeded: true }),
+        manual: await SessionRecording.countDocuments({ isSeeded: { $ne: true } }),
+        total: await SessionRecording.countDocuments(),
+      },
+      products: {
+        seeded: await Product.countDocuments({ seededId: { $regex: /^SEED-/ } }),
+        manual: await Product.countDocuments({ seededId: { $not: { $regex: /^SEED-/ } } }),
+        total: await Product.countDocuments(),
+      },
+    };
+
+    res.json(status);
+  } catch (error) {
+    console.error('Error fetching seed status:', error);
+    res.status(500).json({ error: 'Failed to fetch seed status' });
+  }
+});
+
+/**
+ * POST /api/seed/data/:type
+ * Seed data for a specific type
+ */
+router.post('/data/:type', async (req, res) => {
+  const { type } = req.params;
+  const { count } = req.body; // Optional count parameter
+
+  try {
+    let result;
+    
+    switch (type) {
+      case 'alert-rules':
+        result = await seedAlertRules();
+        break;
+      
+      case 'consent-masking':
+        result = await seedConsentMaskingRules();
+        break;
+      
+      case 'user-events':
+        result = await seedEnrichedUserEvents(count || 200);
+        break;
+      
+      case 'performance-metrics':
+        result = await seedEnrichedPerformanceMetrics(count || 300);
+        break;
+      
+      case 'session-recordings':
+        result = await seedEnrichedSessionRecordings(count || 50);
+        break;
+      
+      default:
+        return res.status(400).json({ error: `Unknown seed type: ${type}` });
+    }
+
+    res.json({ 
+      success: true, 
+      type, 
+      count: Array.isArray(result) ? result.length : 1,
+      message: `Successfully seeded ${type}` 
+    });
+  } catch (error) {
+    console.error(`Error seeding ${type}:`, error);
+    res.status(500).json({ error: `Failed to seed ${type}`, details: error.message });
+  }
+});
+
+/**
+ * DELETE /api/seed/data/:type
+ * Clear seeded data for a specific type
+ */
+router.delete('/data/:type', async (req, res) => {
+  const { type } = req.params;
+
+  try {
+    let result;
+    
+    switch (type) {
+      case 'alert-rules':
+        result = await clearSeededAlertRules();
+        break;
+      
+      case 'consent-masking':
+        result = await clearSeededConsentMaskingRules();
+        break;
+      
+      case 'user-events':
+        result = await clearSeededUserEvents();
+        break;
+      
+      case 'performance-metrics':
+        result = await clearSeededPerformanceMetrics();
+        break;
+      
+      case 'session-recordings':
+        result = await clearSeededSessionRecordings();
+        break;
+      
+      case 'products':
+        result = await Product.deleteMany({ seededId: { $regex: /^SEED-/ } });
+        break;
+      
+      default:
+        return res.status(400).json({ error: `Unknown seed type: ${type}` });
+    }
+
+    res.json({ 
+      success: true, 
+      type, 
+      deletedCount: result.deletedCount || 0,
+      message: `Successfully cleared seeded ${type}` 
+    });
+  } catch (error) {
+    console.error(`Error clearing ${type}:`, error);
+    res.status(500).json({ error: `Failed to clear ${type}`, details: error.message });
   }
 });
 

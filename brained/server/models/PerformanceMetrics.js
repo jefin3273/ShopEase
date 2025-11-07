@@ -49,7 +49,10 @@ const PerformanceMetricsSchema = new mongoose.Schema(
 
     // Metadata
     timestamp: { type: Date, default: Date.now },
-    deviceInfo: { type: DeviceInfoSchema, default: {} }
+    deviceInfo: { type: DeviceInfoSchema, default: {} },
+
+    // Seed tracking
+    isSeeded: { type: Boolean, default: false, index: true }
   },
   { collection: 'performance_metrics' }
 );

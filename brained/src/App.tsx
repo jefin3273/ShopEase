@@ -59,6 +59,7 @@ import ConsentMaskingManager from "./pages/Admin/ConsentMaskingManager";
 import AlertRulesManager from "./pages/Admin/AlertRulesManager";
 import InsightsDashboard from "./pages/Admin/InsightsDashboard";
 import PathAnalysis from "./pages/Admin/PathAnalysis";
+import SeedDataManager from "./pages/Admin/SeedDataManager";
 import TrendsDashboard from "./pages/Admin/TrendsDashboard";
 
 const API_URL = (import.meta as any).env?.VITE_API_BASE || (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
@@ -367,6 +368,7 @@ function App() {
               <Route path="analytics/realtime" element={<RealTimeAnalyticsDashboard />} />
               <Route path="tracking" element={<TrackingSetup />} />
               <Route path="data" element={<AdminDataManagement />} />
+              <Route path="data/seeds" element={<SeedDataManager />} />
               <Route path="monitoring/alerts" element={<AlertRulesManager />} />
               <Route path="privacy/consent" element={<ConsentMaskingManager />} />
             </Route>

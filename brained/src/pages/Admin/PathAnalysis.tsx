@@ -55,10 +55,8 @@ const PathAnalysis: React.FC = () => {
         description: 'An error occurred while fetching path data.'
       });
     } finally {
-      setLoading(false);
-    }
+      setLoading(false);  };
   };
-
   const handleSearch = () => {
     fetchPathData();
   };

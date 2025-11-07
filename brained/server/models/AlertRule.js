@@ -21,6 +21,7 @@ const AlertRuleSchema = new mongoose.Schema(
     cooldownMs: { type: Number, default: 10 * 60 * 1000 }, // 10 minutes
     lastTriggeredAt: { type: Date },
     createdBy: { type: String }, // userId optional
+    isSeeded: { type: Boolean, default: false, index: true },
   },
   { timestamps: true }
 );

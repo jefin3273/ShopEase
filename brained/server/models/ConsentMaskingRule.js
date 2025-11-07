@@ -10,6 +10,7 @@ const ConsentMaskingRuleSchema = new mongoose.Schema(
     priority: { type: Number, default: 0 }, // Higher priority rules override
     description: { type: String },
     createdBy: { type: String },
+    isSeeded: { type: Boolean, default: false, index: true },
   },
   { timestamps: true }
 );

@@ -74,6 +74,13 @@ const userEventSchema = new mongoose.Schema({
     cohort: String,
     custom: mongoose.Schema.Types.Mixed,
   },
+
+  // Seed tracking
+  isSeeded: {
+    type: Boolean,
+    default: false,
+    index: true,
+  },
 }, {
   timestamps: true,
 });
