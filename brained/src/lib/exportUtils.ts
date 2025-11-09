@@ -1,38 +1,16 @@
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import { exportToPDF } from '../utils/pdfExportHelper';
 
 export async function exportElementToPDF(el: HTMLElement, options?: { filename?: string; scale?: number }) {
   const filename = options?.filename || `export-${new Date().toISOString().slice(0,10)}.pdf`;
   const scale = options?.scale ?? 2;
 
-  // Use html2canvas to capture the element
-  const canvas = await html2canvas(el, { scale });
-  const imgData = canvas.toDataURL('image/png');
-
-  const pdf = new jsPDF('p', 'mm', 'a4');
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-
-  // Calculate dimensions preserving aspect ratio
-  const imgWidth = pageWidth;
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-  let position = 0;
-  let heightLeft = imgHeight;
-
-  // First page
-  pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-  heightLeft -= pageHeight;
-
-  // Additional pages if content overflows
-  while (heightLeft > 0) {
-    position = heightLeft - imgHeight;
-    pdf.addPage();
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-    heightLeft -= pageHeight;
-  }
-
-  pdf.save(filename);
+  // Use the enhanced PDF export helper that handles OKLCH colors
+  await exportToPDF(el, filename, {
+    scale,
+    useCORS: true,
+    allowTaint: false,
+    backgroundColor: '#ffffff'
+  });
 }
 
 export function exportRowsToCSV(
@@ -40,7 +18,7 @@ export function exportRowsToCSV(
   rows: Array<Array<string | number | boolean | null | undefined>>,
   filename?: string
 ) {
-  const safe = (v: any) => {
+  const safe = (v: string | number | boolean | null | undefined) => {
     if (v === null || v === undefined) return '';
     const s = String(v);
     // Quote if contains delimiter, quote or newline

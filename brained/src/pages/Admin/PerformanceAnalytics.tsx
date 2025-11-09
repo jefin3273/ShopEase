@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import api from '../../services/api';
 import { toast } from '@/components/ui/use-toast';
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import FilterBar, { type FilterValues } from '@/components/FilterBar';
+import ExportToolbar from '@/components/ExportToolbar';
 
 interface PerformanceMetric {
   pageURL: string;
@@ -36,6 +37,7 @@ const PerformanceAnalytics: React.FC = () => {
   const [metrics, setMetrics] = useState<PerformanceMetric[]>([]);
   const [, setLoading] = useState(true);
   const [filters, setFilters] = useState<FilterValues>({ dateRange: '24h', device: 'all', page: undefined });
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchPerformanceData();
@@ -146,11 +148,68 @@ const PerformanceAnalytics: React.FC = () => {
   const totalErrors = getTotalErrors();
   const chartData = getChartData();
 
+  // Prepare CSV data for export
+  const csvGroups = [
+    {
+      label: 'Core Web Vitals',
+      headers: ['Metric', 'Average Value', 'Rating'],
+      rows: [
+        ['TTFB', `${avgMetrics.TTFB.toFixed(0)}ms`, getPerformanceScore('TTFB', avgMetrics.TTFB).rating],
+        ['LCP', `${(avgMetrics.LCP / 1000).toFixed(2)}s`, getPerformanceScore('LCP', avgMetrics.LCP).rating],
+        ['FCP', `${(avgMetrics.FCP / 1000).toFixed(2)}s`, getPerformanceScore('FCP', avgMetrics.FCP).rating],
+        ['CLS', avgMetrics.CLS.toFixed(3), getPerformanceScore('CLS', avgMetrics.CLS).rating],
+      ],
+      filename: `performance-vitals-${filters.dateRange}.csv`
+    },
+    {
+      label: 'All Performance Metrics',
+      headers: ['Page URL', 'TTFB (ms)', 'LCP (ms)', 'FCP (ms)', 'CLS', 'JS Errors', 'Device', 'Browser', 'Timestamp'],
+      rows: metrics.map(m => [
+        m.pageURL,
+        m.TTFB.toFixed(0),
+        m.LCP.toFixed(0),
+        m.FCP.toFixed(0),
+        m.CLS.toFixed(3),
+        m.jsErrors.length,
+        m.deviceInfo.device,
+        m.deviceInfo.browser,
+        new Date(m.timestamp).toLocaleString()
+      ]),
+      filename: `performance-detailed-${filters.dateRange}.csv`
+    },
+    {
+      label: 'JavaScript Errors',
+      headers: ['Page URL', 'Error Message', 'Device', 'Browser', 'Timestamp'],
+      rows: metrics
+        .filter(m => m.jsErrors.length > 0)
+        .flatMap(m =>
+          m.jsErrors.map(error => [
+            m.pageURL,
+            error.message,
+            m.deviceInfo.device,
+            m.deviceInfo.browser,
+            new Date(m.timestamp).toLocaleString()
+          ])
+        ),
+      filename: `js-errors-${filters.dateRange}.csv`
+    }
+  ];
+
   return (
-    <div className="p-6">
+    <div className="p-6" ref={contentRef}>
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Performance Analytics</h1>
         <p className="text-gray-600">Monitor Core Web Vitals and site performance metrics</p>
+      </div>
+
+      {/* Export Toolbar */}
+      <div className="mb-6 flex justify-end">
+        <ExportToolbar
+          targetRef={contentRef as React.RefObject<HTMLElement>}
+          pdfFilename={`performance-analytics-${filters.dateRange}.pdf`}
+          csvGroups={csvGroups}
+          shareUrl={window.location.href}
+        />
       </div>
 
       {/* Unified FilterBar */}
@@ -179,10 +238,10 @@ const PerformanceAnalytics: React.FC = () => {
               <Zap className="w-6 h-6 text-blue-600" />
             </div>
             <div className={`px-3 py-1 rounded-full text-xs font-medium ${getPerformanceScore('TTFB', avgMetrics.TTFB).color === 'green'
-                ? 'bg-green-100 text-green-700'
-                : getPerformanceScore('TTFB', avgMetrics.TTFB).color === 'yellow'
-                  ? 'bg-yellow-100 text-yellow-700'
-                  : 'bg-red-100 text-red-700'
+              ? 'bg-green-100 text-green-700'
+              : getPerformanceScore('TTFB', avgMetrics.TTFB).color === 'yellow'
+                ? 'bg-yellow-100 text-yellow-700'
+                : 'bg-red-100 text-red-700'
               }`}>
               {getPerformanceScore('TTFB', avgMetrics.TTFB).rating}
             </div>
@@ -202,10 +261,10 @@ const PerformanceAnalytics: React.FC = () => {
               <Activity className="w-6 h-6 text-green-600" />
             </div>
             <div className={`px-3 py-1 rounded-full text-xs font-medium ${getPerformanceScore('LCP', avgMetrics.LCP).color === 'green'
-                ? 'bg-green-100 text-green-700'
-                : getPerformanceScore('LCP', avgMetrics.LCP).color === 'yellow'
-                  ? 'bg-yellow-100 text-yellow-700'
-                  : 'bg-red-100 text-red-700'
+              ? 'bg-green-100 text-green-700'
+              : getPerformanceScore('LCP', avgMetrics.LCP).color === 'yellow'
+                ? 'bg-yellow-100 text-yellow-700'
+                : 'bg-red-100 text-red-700'
               }`}>
               {getPerformanceScore('LCP', avgMetrics.LCP).rating}
             </div>
@@ -225,10 +284,10 @@ const PerformanceAnalytics: React.FC = () => {
               <Clock className="w-6 h-6 text-purple-600" />
             </div>
             <div className={`px-3 py-1 rounded-full text-xs font-medium ${getPerformanceScore('FCP', avgMetrics.FCP).color === 'green'
-                ? 'bg-green-100 text-green-700'
-                : getPerformanceScore('FCP', avgMetrics.FCP).color === 'yellow'
-                  ? 'bg-yellow-100 text-yellow-700'
-                  : 'bg-red-100 text-red-700'
+              ? 'bg-green-100 text-green-700'
+              : getPerformanceScore('FCP', avgMetrics.FCP).color === 'yellow'
+                ? 'bg-yellow-100 text-yellow-700'
+                : 'bg-red-100 text-red-700'
               }`}>
               {getPerformanceScore('FCP', avgMetrics.FCP).rating}
             </div>
@@ -248,10 +307,10 @@ const PerformanceAnalytics: React.FC = () => {
               <AlertTriangle className="w-6 h-6 text-orange-600" />
             </div>
             <div className={`px-3 py-1 rounded-full text-xs font-medium ${getPerformanceScore('CLS', avgMetrics.CLS).color === 'green'
-                ? 'bg-green-100 text-green-700'
-                : getPerformanceScore('CLS', avgMetrics.CLS).color === 'yellow'
-                  ? 'bg-yellow-100 text-yellow-700'
-                  : 'bg-red-100 text-red-700'
+              ? 'bg-green-100 text-green-700'
+              : getPerformanceScore('CLS', avgMetrics.CLS).color === 'yellow'
+                ? 'bg-yellow-100 text-yellow-700'
+                : 'bg-red-100 text-red-700'
               }`}>
               {getPerformanceScore('CLS', avgMetrics.CLS).rating}
             </div>

@@ -11,8 +11,9 @@ const app = express();
 const server = http.createServer({ maxHeaderSize: 65536 }, app);
 
 // middleware - increase payload limit for image uploads (base64 encoded images can be large)
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// PDFs can be especially large, so we use 100mb limit
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
 app.use(cookieParser());
 
 // Support a comma-separated list of allowed client origins via CLIENT_URLS
@@ -92,7 +93,7 @@ global.activeRecording = null;
 // Helper: enrich event metadata with classification tags
 function enrichEventMetadata(event, metadata) {
   const enriched = { ...(metadata || {}) };
-  
+
   // Classify based on event type and data
   if (event?.type === 3) { // IncrementalSnapshot
     const source = event?.data?.source;
@@ -115,12 +116,12 @@ function enrichEventMetadata(event, metadata) {
   } else if (event?.type === 5) {
     enriched.classification = 'custom';
   }
-  
+
   // Tag errors if present
   if (metadata?.error || event?.data?.tag === 'error') {
     enriched.hasError = true;
   }
-  
+
   return enriched;
 }
 
@@ -145,7 +146,7 @@ io.on('connection', (socket) => {
   socket.on('join-admin-room', ({ adminId }) => {
     socket.join('admin-room');
     console.log(`[Socket.IO] Admin ${adminId} joined admin room`);
-    
+
     // Send active users count
     const userSockets = io.sockets.adapter.rooms.get('project-default');
     const activeUsers = userSockets ? userSockets.size : 0;
@@ -155,7 +156,7 @@ io.on('connection', (socket) => {
   // Admin starts recording - broadcast to all user clients
   socket.on('admin-start-recording', ({ recordingId, projectId, adminId, timestamp }) => {
     console.log(`[Socket.IO] Admin ${adminId} started recording ${recordingId} for project ${projectId}`);
-    
+
     // Store active recording state globally
     global.activeRecording = {
       recordingId,
@@ -163,7 +164,7 @@ io.on('connection', (socket) => {
       adminId,
       startTime: timestamp || Date.now(),
     };
-    
+
     // Broadcast to all users in the project (include multiple event name variants for SDKs)
     const payload = {
       recordingId,
@@ -174,29 +175,29 @@ io.on('connection', (socket) => {
     io.to(`project-${projectId}`).emit('start-recording', payload);
     io.to(`project-${projectId}`).emit('recording:start', payload);
     io.to(`project-${projectId}`).emit('admin:recording:start', payload);
-    
+
     // Join recording-specific room for this admin
     socket.join(`recording-admin-${recordingId}`);
-    
+
     console.log(`[Socket.IO] Recording ${recordingId} started, waiting for user events...`);
   });
 
   // Admin stops recording
   socket.on('admin-stop-recording', ({ recordingId, timestamp }) => {
     console.log(`[Socket.IO] Stopping recording ${recordingId}`);
-    
+
     // Clear active recording state
     if (global.activeRecording && global.activeRecording.recordingId === recordingId) {
       global.activeRecording = null;
     }
-    
+
     // Broadcast to all users to stop recording (variants)
     const payload = { recordingId, timestamp };
     io.emit('recording-stop', payload);
     io.emit('stop-recording', payload);
     io.emit('recording:stop', payload);
     io.emit('admin:recording:stop', payload);
-    
+
     // Leave recording room
     socket.leave(`recording-admin-${recordingId}`);
   });
@@ -204,10 +205,10 @@ io.on('connection', (socket) => {
   // User sends recording event to admin
   socket.on('recording-event', ({ recordingId, event, metadata }) => {
     console.log(`[Socket.IO] Received recording event for ${recordingId}, type: ${event?.type || 'unknown'}`);
-    
+
     // Enrich event with classification tags
     const enrichedMetadata = enrichEventMetadata(event, metadata);
-    
+
     // Forward to admin dashboard watching this recording
     io.to(`recording-admin-${recordingId}`).emit('live-event', {
       recordingId,
@@ -262,17 +263,17 @@ io.on('connection', (socket) => {
   // User joins and shares metadata
   socket.on('user-joined', ({ userId, metadata, projectId }) => {
     console.log(`[Socket.IO] User ${userId} joined project ${projectId}`);
-    
+
     // Join project room
     socket.join(`project-${projectId}`);
-    
+
     // Notify admin room
     io.to('admin-room').emit('user-joined', {
       userId,
       metadata,
       timestamp: Date.now(),
     });
-    
+
     // Update active users count for admins
     const userSockets = io.sockets.adapter.rooms.get(`project-${projectId}`);
     const activeUsers = userSockets ? userSockets.size : 0;
@@ -281,7 +282,7 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('[Socket.IO] Client disconnected:', socket.id);
-    
+
     // Update active users count
     const userSockets = io.sockets.adapter.rooms.get('project-default');
     const activeUsers = userSockets ? userSockets.size : 0;
@@ -305,6 +306,7 @@ const cartRoutes = require('./routes/cart');
 const analyticsAdminRoutes = require('./routes/analyticsAdmin');
 const alertsRoutes = require('./routes/alerts');
 const consentRoutes = require('./routes/consent');
+const reportsRoutes = require('./routes/reports');
 const rateLimiter = require('./middleware/rateLimiter');
 const deviceInfo = require('./middleware/deviceInfo');
 
@@ -364,6 +366,9 @@ app.use('/api/orders', ordersRoutes);
 // cart API
 app.use('/api/cart', cartRoutes);
 
+// reports API (scheduled reports and email exports)
+app.use('/api/reports', reportsRoutes);
+
 // seeding API
 const seedRoutes = require('./routes/seed');
 app.use('/api/seed', seedRoutes);
@@ -408,6 +413,15 @@ mongoose
         alertsScheduler.start();
       } catch (e) {
         console.error('Failed to start AlertsScheduler', e);
+      }
+
+      // Initialize report scheduler
+      try {
+        const reportScheduler = require('./services/reportScheduler');
+        reportScheduler.initializeScheduler();
+        console.log('📧 Report Scheduler initialized');
+      } catch (e) {
+        console.error('Failed to start ReportScheduler', e);
       }
     });
   })

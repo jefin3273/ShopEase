@@ -16,7 +16,12 @@
   "engines": {
     "node": ">=16"
   },
-  "keywords": ["mern", "express", "mongodb", "starter"],
+  "keywords": [
+    "mern",
+    "express",
+    "mongodb",
+    "starter"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
@@ -31,7 +36,9 @@
     "json2csv": "^6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.0",
     "mongoose": "^7.0.0",
+    "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
+    "nodemailer": "^7.0.10",
     "pdfkit": "^0.13.0",
     "socket.io": "^4.8.1",
     "ua-parser-js": "^1.0.37",

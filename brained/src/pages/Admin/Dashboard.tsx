@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { getDashboardOverview } from '../../services/dashboard';
 import { useAuth } from '../../context/AuthContext';
+import ExportToolbar, { type CsvGroup } from '../../components/ExportToolbar';
 import {
   LineChart,
   Line,
@@ -67,16 +68,9 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('7d');
   const [error, setError] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const { accessToken } = useAuth();
-
-  useEffect(() => {
-    // Wait until we have an access token before attempting any dashboard calls to avoid 401 spam
-    if (!accessToken) return;
-    loadDashboard();
-    const interval = setInterval(loadDashboard, 30000); // Refresh every 30s
-    return () => clearInterval(interval);
-  }, [dateRange, accessToken]);
 
   const loadDashboard = async () => {
     try {
@@ -89,13 +83,76 @@ const Dashboard: React.FC = () => {
       if (response.success) {
         setData(response);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Dashboard error:', err);
-      setError(err.response?.data?.error || 'Failed to load dashboard');
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // Wait until we have an access token before attempting any dashboard calls to avoid 401 spam
+    if (!accessToken) return;
+    loadDashboard();
+    const interval = setInterval(loadDashboard, 30000); // Refresh every 30s
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateRange, accessToken]);
+
+  // Prepare CSV export groups
+  const csvGroups = useMemo<CsvGroup[]>(() => {
+    if (!data) return [];
+    
+    const { overview, topPages, trafficSources, devices, browsers, pageViewTrend } = data;
+    
+    return [
+      {
+        label: 'Dashboard Overview',
+        filename: `dashboard-overview-${dateRange}.csv`,
+        headers: ['Metric', 'Value'],
+        rows: [
+          ['Total Page Views', overview.totalPageViews],
+          ['Unique Visitors', overview.uniqueVisitors],
+          ['Total Sessions', overview.totalSessions],
+          ['Avg Session Duration (s)', overview.avgSessionDuration],
+          ['Bounce Rate (%)', overview.bounceRate],
+          ['Avg Page Views', overview.avgPageViews],
+          ['Real-time Visitors', overview.realTimeVisitors],
+        ],
+      },
+      {
+        label: 'Top Pages',
+        filename: `top-pages-${dateRange}.csv`,
+        headers: ['URL', 'Views', 'Unique Visitors', 'Avg Time on Page (s)'],
+        rows: topPages.map(p => [p.url, p.views, p.uniqueVisitors, p.avgTimeOnPage]),
+      },
+      {
+        label: 'Traffic Sources',
+        filename: `traffic-sources-${dateRange}.csv`,
+        headers: ['Source', 'Sessions'],
+        rows: trafficSources.map(t => [t.source, t.sessions]),
+      },
+      {
+        label: 'Device Breakdown',
+        filename: `device-breakdown-${dateRange}.csv`,
+        headers: ['Device Type', 'Count'],
+        rows: devices.map(d => [d.type, d.count]),
+      },
+      {
+        label: 'Browser Distribution',
+        filename: `browser-distribution-${dateRange}.csv`,
+        headers: ['Browser', 'Count'],
+        rows: browsers.map(b => [b.browser, b.count]),
+      },
+      {
+        label: 'Page View Trend',
+        filename: `pageview-trend-${dateRange}.csv`,
+        headers: ['Date', 'Views'],
+        rows: pageViewTrend.map(p => [p.date, p.views]),
+      },
+    ];
+  }, [data, dateRange]);
 
   const StatCard = ({
     title,
@@ -104,7 +161,14 @@ const Dashboard: React.FC = () => {
     suffix = '',
     trend,
     color = 'blue',
-  }: any) => (
+  }: {
+    title: string;
+    value: number;
+    icon: typeof Users;
+    suffix?: string;
+    trend?: number;
+    color?: string;
+  }) => (
     <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between">
         <div>
@@ -176,7 +240,7 @@ const Dashboard: React.FC = () => {
   }));
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gray-50 p-8" ref={containerRef}>
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
@@ -185,6 +249,14 @@ const Dashboard: React.FC = () => {
             <p className="text-gray-600">Real-time insights into your website performance</p>
           </div>
           <div className="flex items-center gap-4">
+            {/* Export Toolbar */}
+            <ExportToolbar 
+              targetRef={containerRef as React.RefObject<HTMLElement>} 
+              pdfFilename={`dashboard-${dateRange}.pdf`}
+              csvGroups={csvGroups}
+              size="sm"
+            />
+            
             {/* Real-time visitors badge */}
             <div className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-lg border border-green-200">
               <Activity className="w-5 h-5 animate-pulse" />
