@@ -896,7 +896,7 @@ router.get('/interactions/dead-clicks', async (req, res) => {
 // Generate or retrieve heatmap data
 router.get('/heatmap', async (req, res) => {
   try {
-    const { pageURL, type = 'click', device, startDate, endDate, regenerate } = req.query;
+    const { pageURL, type = 'click', device, startDate, endDate, regenerate, pattern } = req.query;
 
     if (!pageURL) {
       return res.status(400).json({ message: 'pageURL is required' });
@@ -905,10 +905,22 @@ router.get('/heatmap', async (req, res) => {
     const start = startDate ? new Date(startDate) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const end = endDate ? new Date(endDate) : new Date();
 
+    // Check if this is a pattern match (e.g., /products/* for all product pages)
+    const isPattern = pattern === 'true' || pageURL.includes('*') || pageURL.includes(':id');
+    
+    // Normalize pageURL for pattern matching
+    let urlPattern = pageURL;
+    if (isPattern) {
+      // Convert dynamic segments like /products/:id to regex pattern
+      urlPattern = pageURL
+        .replace(/\/:\w+/g, '/[^/]+')  // /products/:id -> /products/[^/]+
+        .replace(/\*/g, '.*');           // /products/* -> /products/.*
+    }
+
     // Check if we need to regenerate or if cached version exists
     let heatmap = null;
 
-    if (regenerate !== 'true') {
+    if (regenerate !== 'true' && !isPattern) {
       heatmap = await HeatmapData.findOne({
         pageURL,
         type,
@@ -922,7 +934,12 @@ router.get('/heatmap', async (req, res) => {
     }
 
     // Generate new heatmap from raw interactions
-    heatmap = await HeatmapData.generateHeatmap(pageURL, type, start, end, device);
+    if (isPattern) {
+      // For pattern matching, aggregate data from multiple pages
+      heatmap = await HeatmapData.generatePatternHeatmap(urlPattern, type, start, end, device);
+    } else {
+      heatmap = await HeatmapData.generateHeatmap(pageURL, type, start, end, device);
+    }
 
     res.json({ heatmapData: heatmap.points, metadata: heatmap.metadata });
   } catch (error) {

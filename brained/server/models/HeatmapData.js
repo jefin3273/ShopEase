@@ -128,4 +128,73 @@ heatmapDataSchema.statics.generateHeatmap = async function (
   return heatmapDoc;
 };
 
+// Static method to aggregate heatmap data from multiple pages matching a pattern
+// e.g., /products/* will aggregate data from all product pages
+heatmapDataSchema.statics.generatePatternHeatmap = async function (
+  urlPattern,
+  type,
+  startDate,
+  endDate,
+  device = null
+) {
+  const UserInteraction = mongoose.model('UserInteraction');
+  
+  // Convert the pattern to a regex
+  const regex = new RegExp('^' + urlPattern + '$', 'i');
+  
+  const matchQuery = {
+    pageURL: { $regex: regex },
+    eventType: type,
+    timestamp: {
+      $gte: startDate,
+      $lte: endDate,
+    },
+  };
+
+  if (device) {
+    matchQuery['metadata.device'] = device;
+  }
+
+  // Aggregate all interactions matching the pattern
+  const aggregated = await UserInteraction.aggregate([
+    { $match: matchQuery },
+    {
+      $group: {
+        _id: {
+          x: { $round: ['$metadata.x', 0] },
+          y: { $round: ['$metadata.y', 0] },
+        },
+        value: { $sum: 1 },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        x: '$_id.x',
+        y: '$_id.y',
+        value: 1,
+      },
+    },
+    { $sort: { value: -1 } },
+    { $limit: 5000 }, // Limit to top 5000 points for performance
+  ]);
+
+  // Get unique users and session count
+  const uniqueUsers = await UserInteraction.distinct('userId', matchQuery);
+  const uniqueSessions = await UserInteraction.distinct('sessionId', matchQuery);
+
+  // Return a virtual heatmap document (not saved to DB for patterns)
+  return {
+    points: aggregated,
+    dateRange: { start: startDate, end: endDate },
+    metadata: {
+      totalInteractions: aggregated.reduce((sum, p) => sum + p.value, 0),
+      uniqueUsers: uniqueUsers.length,
+      sessionCount: uniqueSessions.length,
+      pattern: urlPattern,
+      lastUpdated: new Date(),
+    },
+  };
+};
+
 module.exports = mongoose.model('HeatmapData', heatmapDataSchema);

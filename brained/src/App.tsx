@@ -28,7 +28,7 @@ import RealTimeAnalyticsDashboard from "./pages/Admin/RealTimeAnalyticsDashboard
 import RecordingsList from "./pages/Admin/RecordingsList";
 import SessionReplayPlayer from "./pages/Admin/SessionReplayPlayerNew";
 // Use improved Heatmap visualization component
-import HeatmapVisualizationImproved from "./pages/Admin/HeatmapVisualizationImproved";
+import HeatmapAnalytics from "./pages/Admin/HeatmapAnalytics";
 import PerformanceAnalytics from "./pages/Admin/PerformanceAnalyticsDashboard";
 import FunnelAnalysis from "./pages/Admin/FunnelAnalysis";
 import CohortAnalysis from "./pages/Admin/CohortAnalysis";
@@ -350,7 +350,7 @@ function App() {
               <Route path="analytics/overview" element={<RealTimeAnalyticsDashboard />} />
               <Route path="analytics/recordings" element={<RecordingsList />} />
               <Route path="analytics/recordings/:sessionId" element={<SessionReplayPlayer />} />
-              <Route path="analytics/heatmap" element={<HeatmapVisualizationImproved />} />
+              <Route path="analytics/heatmap" element={<HeatmapAnalytics />} />
               <Route path="analytics/live-recording" element={<LiveRecordingDashboard />} />
                           <Route path="analytics/reports" element={<ReportsExport />} />
               <Route path="analytics/behavior" element={<BehaviorAnalytics />} />
