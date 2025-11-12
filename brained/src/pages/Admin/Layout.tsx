@@ -47,10 +47,10 @@ import { useAuth } from '../../context/AuthContext';
 const AdminLayout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   let auth: any = null;
   try { auth = useAuth(); } catch (e) { auth = null; }
-  
+
   // Recording control component
   const RecordingControl: React.FC = () => {
     const [isRec, setIsRec] = useState<boolean>(false);
@@ -113,11 +113,11 @@ const AdminLayout: React.FC = () => {
   ];
 
   const analyticsItems = [
-    {
-      title: 'Overview',
-      url: '/admin/analytics/overview',
-      icon: TrendingUp,
-    },
+    // {
+    //   title: 'Overview',
+    //   url: '/admin/analytics/overview',
+    //   icon: TrendingUp,
+    // },
     // {
     //   title: 'Real-Time Dashboard',
     //   url: '/admin/analytics/realtime',
@@ -316,7 +316,7 @@ const AdminLayout: React.FC = () => {
                   View Store
                 </Link>
               </Button>
-              
+
               <Button
                 variant="outline"
                 size="sm"
@@ -328,7 +328,7 @@ const AdminLayout: React.FC = () => {
                   Profile
                 </Link>
               </Button>
-              
+
               <Button
                 variant="outline"
                 size="sm"
@@ -344,10 +344,10 @@ const AdminLayout: React.FC = () => {
                 Logout
               </Button>
             </div>
-            
+
             <Separator className="my-2" />
             <RecordingControl />
-            
+
             {/* User info when collapsed */}
             <div className="hidden group-data-[collapsible=icon]:flex flex-col items-center gap-1 pt-2">
               <Button

@@ -42,9 +42,15 @@ const pageViewSchema = new mongoose.Schema({
     default: false,
   },
   device: {
-    type: String,
+    type: {
+      type: String,
+    },
     browser: String,
     os: String,
+  },
+  isSeeded: {
+    type: Boolean,
+    default: false,
   },
 }, {
   timestamps: true,

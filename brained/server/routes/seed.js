@@ -12,10 +12,14 @@ const { seedEnrichedUserEvents, clearSeededUserEvents } = require('../scripts/se
 const { seedEnrichedPerformanceMetrics, clearSeededPerformanceMetrics } = require('../scripts/seedEnrichedPerformance');
 const { seedEnrichedSessionRecordings, clearSeededSessionRecordings } = require('../scripts/seedEnrichedSessions');
 const { seedAllHeatmapData, clearSeededHeatmapData } = require('../scripts/seedHeatmapData');
+const { seedPageViews, clearSeededPageViews } = require('../scripts/seedPageViews');
+const { seedFunnels, clearSeededFunnels } = require('../scripts/seedFunnels');
 
 // Import models for seed status
 const AlertRule = require('../models/AlertRule');
 const ConsentMaskingRule = require('../models/ConsentMaskingRule');
+const PageView = require('../models/PageView');
+const Funnel = require('../models/Funnel');
 
 // Helper to generate seeded UUIDs (with SEED prefix)
 const generateSeededId = () => `SEED-${uuidv4()}`;
@@ -132,7 +136,7 @@ const seedProducts = [
 router.post('/products', async (req, res) => {
   try {
     const { categories } = req.body; // Accept array of categories to seed
-    
+
     // Delete existing seeded products (those with seededId starting with SEED-)
     await Product.deleteMany({ seededId: { $regex: /^SEED-/ } });
 
@@ -339,6 +343,16 @@ router.get('/status', async (req, res) => {
         manual: await Product.countDocuments({ seededId: { $not: { $regex: /^SEED-/ } } }),
         total: await Product.countDocuments(),
       },
+      pageViews: {
+        seeded: await PageView.countDocuments({ isSeeded: true }),
+        manual: await PageView.countDocuments({ isSeeded: { $ne: true } }),
+        total: await PageView.countDocuments(),
+      },
+      funnels: {
+        seeded: await Funnel.countDocuments({ isSeeded: true }),
+        manual: await Funnel.countDocuments({ isSeeded: { $ne: true } }),
+        total: await Funnel.countDocuments(),
+      },
     };
 
     res.json(status);
@@ -358,41 +372,49 @@ router.post('/data/:type', async (req, res) => {
 
   try {
     let result;
-    
+
     switch (type) {
       case 'alert-rules':
         result = await seedAlertRules();
         break;
-      
+
       case 'consent-masking':
         result = await seedConsentMaskingRules();
         break;
-      
+
       case 'user-events':
         result = await seedEnrichedUserEvents(count || 200);
         break;
-      
+
       case 'performance-metrics':
         result = await seedEnrichedPerformanceMetrics(count || 300);
         break;
-      
+
       case 'session-recordings':
         result = await seedEnrichedSessionRecordings(count || 50);
         break;
-      
-        case 'heatmap-data':
-          result = await seedAllHeatmapData();
-          break;
-      
+
+      case 'heatmap-data':
+        result = await seedAllHeatmapData();
+        break;
+
+      case 'page-views':
+        result = await seedPageViews(count || 500);
+        break;
+
+      case 'funnels':
+        result = await seedFunnels();
+        break;
+
       default:
         return res.status(400).json({ error: `Unknown seed type: ${type}` });
     }
 
-    res.json({ 
-      success: true, 
-      type, 
+    res.json({
+      success: true,
+      type,
       count: Array.isArray(result) ? result.length : 1,
-      message: `Successfully seeded ${type}` 
+      message: `Successfully seeded ${type}`
     });
   } catch (error) {
     console.error(`Error seeding ${type}:`, error);
@@ -409,45 +431,53 @@ router.delete('/data/:type', async (req, res) => {
 
   try {
     let result;
-    
+
     switch (type) {
       case 'alert-rules':
         result = await clearSeededAlertRules();
         break;
-      
+
       case 'consent-masking':
         result = await clearSeededConsentMaskingRules();
         break;
-      
+
       case 'user-events':
         result = await clearSeededUserEvents();
         break;
-      
+
       case 'performance-metrics':
         result = await clearSeededPerformanceMetrics();
         break;
-      
+
       case 'session-recordings':
         result = await clearSeededSessionRecordings();
         break;
-      
+
       case 'products':
         result = await Product.deleteMany({ seededId: { $regex: /^SEED-/ } });
         break;
-      
-        case 'heatmap-data':
-          result = await clearSeededHeatmapData();
-          break;
-      
+
+      case 'heatmap-data':
+        result = await clearSeededHeatmapData();
+        break;
+
+      case 'page-views':
+        result = await clearSeededPageViews();
+        break;
+
+      case 'funnels':
+        result = await clearSeededFunnels();
+        break;
+
       default:
         return res.status(400).json({ error: `Unknown seed type: ${type}` });
     }
 
-    res.json({ 
-      success: true, 
-      type, 
+    res.json({
+      success: true,
+      type,
       deletedCount: result.deletedCount || 0,
-      message: `Successfully cleared seeded ${type}` 
+      message: `Successfully cleared seeded ${type}`
     });
   } catch (error) {
     console.error(`Error clearing ${type}:`, error);

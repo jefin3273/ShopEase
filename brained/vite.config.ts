@@ -15,4 +15,12 @@ export default defineConfig({
       "worker_threads": path.resolve(__dirname, "./src/shims/empty.ts"),
     },
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+    },
+  },
 })

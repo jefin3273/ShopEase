@@ -31,6 +31,8 @@ import {
   Package,
   Loader2,
   CheckCircle2,
+  GitBranch,
+  BarChart3,
 } from 'lucide-react';
 import ExportToolbar from '@/components/ExportToolbar';
 
@@ -47,6 +49,8 @@ interface SeedStatuses {
   performanceMetrics: SeedStatus;
   sessionRecordings: SeedStatus;
   products: SeedStatus;
+  pageViews: SeedStatus;
+  funnels: SeedStatus;
 }
 
 interface SeedTypeConfig {
@@ -104,6 +108,21 @@ const seedTypes: SeedTypeConfig[] = [
     icon: Package,
     color: 'bg-indigo-500',
   },
+  {
+    id: 'page-views',
+    label: 'Page Views',
+    description: 'User navigation data for path analysis and user journey tracking',
+    icon: GitBranch,
+    color: 'bg-cyan-500',
+    defaultCount: 500,
+  },
+  {
+    id: 'funnels',
+    label: 'Funnels',
+    description: 'Conversion funnel configurations with steps and analytics',
+    icon: BarChart3,
+    color: 'bg-pink-500',
+  },
 ];
 
 export default function SeedDataManager() {
@@ -121,18 +140,18 @@ export default function SeedDataManager() {
 
   const fetchStatus = async () => {
     try {
-  const response = await fetch(`${API_BASE}/api/seed/status`);
+      const response = await fetch(`${API_BASE}/api/seed/status`);
       // Read body as text first so we can surface HTML/error pages and avoid
       // "body stream already read" when attempting both json() and text().
       const text = await response.text();
       if (!response.ok) {
-        throw new Error(`Server returned ${response.status}: ${text.slice(0,200)}`);
+        throw new Error(`Server returned ${response.status}: ${text.slice(0, 200)}`);
       }
       let data: any;
       try {
         data = JSON.parse(text);
       } catch (e) {
-        throw new Error(`Invalid JSON response: ${text.slice(0,200)}`);
+        throw new Error(`Invalid JSON response: ${text.slice(0, 200)}`);
       }
       // Basic shape validation
       if (data && typeof data === 'object') {
@@ -177,7 +196,7 @@ export default function SeedDataManager() {
 
   // Helper to perform the fetch and return parsed JSON or throw with a readable message
   const seedOne = async (seedType: string, count?: number) => {
-  const endpoint = seedType === 'products' ? `${API_BASE}/api/seed/products` : `${API_BASE}/api/seed/data/${seedType}`;
+    const endpoint = seedType === 'products' ? `${API_BASE}/api/seed/products` : `${API_BASE}/api/seed/data/${seedType}`;
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -186,13 +205,13 @@ export default function SeedDataManager() {
 
     const text = await response.text();
     if (!response.ok) {
-      throw new Error(`Server returned ${response.status}: ${text.slice(0,200)}`);
+      throw new Error(`Server returned ${response.status}: ${text.slice(0, 200)}`);
     }
     try {
       const data = JSON.parse(text);
       return data;
     } catch (e) {
-      throw new Error(`Invalid JSON response: ${text.slice(0,200)}`);
+      throw new Error(`Invalid JSON response: ${text.slice(0, 200)}`);
     }
   };
 
@@ -226,14 +245,14 @@ export default function SeedDataManager() {
       const response = await fetch(endpoint, { method: 'DELETE' });
       const text = await response.text();
       if (!response.ok) {
-        throw new Error(`Server returned ${response.status}: ${text.slice(0,200)}`);
+        throw new Error(`Server returned ${response.status}: ${text.slice(0, 200)}`);
       }
 
       let data: any;
       try {
         data = JSON.parse(text);
       } catch (e) {
-        throw new Error(`Invalid JSON response: ${text.slice(0,200)}`);
+        throw new Error(`Invalid JSON response: ${text.slice(0, 200)}`);
       }
 
       if (data && (data.success || response.ok)) {
@@ -260,19 +279,23 @@ export default function SeedDataManager() {
 
   const getStatusForType = (typeId: string): SeedStatus => {
     if (!statuses) return { seeded: 0, manual: 0, total: 0 };
-    
-    const statusKey = typeId === 'alert-rules' 
+
+    const statusKey = typeId === 'alert-rules'
       ? 'alertRules'
       : typeId === 'consent-masking'
-      ? 'consentMaskingRules'
-      : typeId === 'user-events'
-      ? 'userEvents'
-      : typeId === 'performance-metrics'
-      ? 'performanceMetrics'
-      : typeId === 'session-recordings'
-      ? 'sessionRecordings'
-      : 'products';
-    
+        ? 'consentMaskingRules'
+        : typeId === 'user-events'
+          ? 'userEvents'
+          : typeId === 'performance-metrics'
+            ? 'performanceMetrics'
+            : typeId === 'session-recordings'
+              ? 'sessionRecordings'
+              : typeId === 'page-views'
+                ? 'pageViews'
+                : typeId === 'funnels'
+                  ? 'funnels'
+                  : 'products';
+
     return statuses[statusKey as keyof SeedStatuses] || { seeded: 0, manual: 0, total: 0 };
   };
 

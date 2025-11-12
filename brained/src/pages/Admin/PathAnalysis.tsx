@@ -8,6 +8,7 @@ import { Badge } from '../../components/ui/badge';
 import { GitBranch, Search } from 'lucide-react';
 import { useToast } from '../../components/ui/use-toast';
 import ExportToolbar from '../../components/ExportToolbar';
+import SankeyDiagram from '../../components/SankeyDiagram';
 import { useRef } from 'react';
 
 interface SankeyNode {
@@ -44,7 +45,7 @@ const PathAnalysis: React.FC = () => {
       const params = new URLSearchParams();
       if (goalPath) params.append('goalPath', goalPath);
       params.append('maxNodes', maxNodes.toString());
-      
+
       const response = await api.get(`/api/paths/sankey?${params.toString()}`);
       setData(response.data);
     } catch (error) {
@@ -55,7 +56,8 @@ const PathAnalysis: React.FC = () => {
         description: 'An error occurred while fetching path data.'
       });
     } finally {
-      setLoading(false);  };
+      setLoading(false);
+    };
   };
   const handleSearch = () => {
     fetchPathData();
@@ -79,19 +81,19 @@ const PathAnalysis: React.FC = () => {
 
   const csvGroups = data
     ? [
-        {
-          label: 'Nodes',
-          headers: ['Index', 'Name', 'Is Goal'],
-          rows: data.nodes.map((n, i) => [i, n.name, !!n.isGoal]),
-          filename: 'paths-nodes.csv',
-        },
-        {
-          label: 'Links',
-          headers: ['Source', 'Target', 'Value'],
-          rows: data.links.map((l) => [l.source, l.target, l.value]),
-          filename: 'paths-links.csv',
-        },
-      ]
+      {
+        label: 'Nodes',
+        headers: ['Index', 'Name', 'Is Goal'],
+        rows: data.nodes.map((n, i) => [i, n.name, !!n.isGoal]),
+        filename: 'paths-nodes.csv',
+      },
+      {
+        label: 'Links',
+        headers: ['Source', 'Target', 'Value'],
+        rows: data.links.map((l) => [l.source, l.target, l.value]),
+        filename: 'paths-links.csv',
+      },
+    ]
     : [];
 
   return (
@@ -233,39 +235,29 @@ const PathAnalysis: React.FC = () => {
       {data && data.nodes.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Sankey Diagram Visualization</CardTitle>
+            <CardTitle>User Journey Flow Visualization</CardTitle>
             <CardDescription>
-              Interactive flow diagram (requires Recharts/D3 integration)
+              Interactive Sankey diagram showing page-to-page navigation patterns
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[400px] border-2 border-dashed rounded-lg flex items-center justify-center bg-muted/20">
-              <div className="text-center">
-                <GitBranch className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Sankey Visualization Area</h3>
-                <p className="text-sm text-muted-foreground max-w-md">
-                  Integrate a charting library like Recharts Sankey or D3.js Sankey to visualize
-                  the {data.nodes.length} nodes and {data.links.length} links above
-                </p>
-                <div className="mt-4 space-x-2">
-                  <Button variant="outline" size="sm" asChild>
-                    <a
-                      href="https://recharts.org/en-US/examples/SimpleSankey"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Recharts Example
-                    </a>
-                  </Button>
-                  <Button variant="outline" size="sm" asChild>
-                    <a
-                      href="https://d3-graph-gallery.com/sankey.html"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      D3 Example
-                    </a>
-                  </Button>
+            <div className="bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 rounded-lg p-4">
+              <SankeyDiagram data={data} />
+            </div>
+            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+              <div className="flex items-start gap-3">
+                <GitBranch className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                <div className="flex-1">
+                  <h4 className="font-semibold text-sm text-blue-900 dark:text-blue-100 mb-1">
+                    How to read this diagram:
+                  </h4>
+                  <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
+                    <li>• <strong>Blue boxes</strong> represent pages in your site</li>
+                    <li>• <strong>Green boxes</strong> represent goal pages (if filtered)</li>
+                    <li>• <strong>Flow width</strong> indicates the number of users taking that path</li>
+                    <li>• <strong>Hover</strong> over flows to see exact user counts</li>
+                    <li>• <strong>Left to right</strong> shows the user journey progression</li>
+                  </ul>
                 </div>
               </div>
             </div>

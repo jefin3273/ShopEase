@@ -161,7 +161,7 @@ exports.analyzeFunnel = async (req, res) => {
       const step = funnel.steps[i];
       const query = buildQuery(step, false); // exclude filters
       const users = await UserEvent.distinct('userId', query);
-      const { dateRange, device, country, utmSource, referrerContains, pathPrefix } = req.query;
+      const userCount = users.length;
       let conversionRate = 100;
       let dropoffRate = 0;
       if (i === 0) baselinePrev = userCount; else {
@@ -209,7 +209,7 @@ exports.analyzeFunnel = async (req, res) => {
           const nxt = nextEvents.find(ne => ne.userId === ev.userId && ne.timestamp > ev.timestamp);
           if (nxt) timeDiffs.push((nxt.timestamp - ev.timestamp) / 1000);
         });
-        if (timeDiffs.length) avgTimeToNext = Math.round(timeDiffs.reduce((a,b)=>a+b,0) / timeDiffs.length);
+        if (timeDiffs.length) avgTimeToNext = Math.round(timeDiffs.reduce((a, b) => a + b, 0) / timeDiffs.length);
       }
 
       analysis.push({
@@ -248,7 +248,12 @@ exports.analyzeFunnel = async (req, res) => {
     });
   } catch (error) {
     console.error('Error analyzing funnel:', error);
-    res.status(500).json({ error: 'Failed to analyze funnel' });
+    console.error('Error stack:', error.stack);
+    res.status(500).json({
+      error: 'Failed to analyze funnel',
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 

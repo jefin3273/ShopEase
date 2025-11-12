@@ -11,7 +11,7 @@ const funnelSchema = new mongoose.Schema({
     default: 'default',
     index: true,
   },
-  
+
   // Funnel steps
   steps: [{
     order: {
@@ -28,7 +28,7 @@ const funnelSchema = new mongoose.Schema({
     element: String,
     conditions: mongoose.Schema.Types.Mixed,
   }],
-  
+
   // Funnel stats
   stats: {
     totalEntered: Number,
@@ -41,18 +41,23 @@ const funnelSchema = new mongoose.Schema({
       dropoffRate: Number,
     }],
   },
-  
+
   // Time window
   timeWindow: {
     value: Number,
     unit: String, // minutes, hours, days
   },
-  
+
   isActive: {
     type: Boolean,
     default: true,
   },
-  
+
+  isSeeded: {
+    type: Boolean,
+    default: false,
+  },
+
 }, {
   timestamps: true,
 });

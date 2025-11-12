@@ -80,7 +80,7 @@ const FunnelAnalysis: React.FC = () => {
   const [utmSource, setUtmSource] = useState<string>('');
   const [referrerContains, setReferrerContains] = useState<string>('');
   const [pathPrefix, setPathPrefix] = useState<string>('');
-  
+
   // Create funnel form state
   const [newFunnel, setNewFunnel] = useState({
     name: '',
@@ -98,7 +98,7 @@ const FunnelAnalysis: React.FC = () => {
     if (selectedFunnel) {
       analyzeFunnel(selectedFunnel._id);
     }
-  
+
   }, [selectedFunnel, dateRange, device, country, utmSource, referrerContains, pathPrefix]);
 
   // Calculate metrics - must be before any early returns
@@ -117,12 +117,16 @@ const FunnelAnalysis: React.FC = () => {
       const response = await axios.get(`${API_URL}/api/funnels`, {
         withCredentials: true,
       });
+      console.log('Fetched funnels:', response.data);
       setFunnels(response.data.funnels || []);
       if (response.data.funnels && response.data.funnels.length > 0) {
         setSelectedFunnel(response.data.funnels[0]);
+      } else {
+        console.warn('No funnels found. Please seed funnel data from the Seed Data Manager.');
       }
     } catch (err) {
       console.error('Failed to fetch funnels', err);
+      alert('Failed to fetch funnels. Please check your server connection.');
     } finally {
       setLoading(false);
     }
@@ -137,13 +141,20 @@ const FunnelAnalysis: React.FC = () => {
       if (referrerContains) params.append('referrerContains', referrerContains);
       if (pathPrefix) params.append('pathPrefix', pathPrefix);
       const url = `${API_URL}/api/funnels/${funnelId}/analyze?${params.toString()}`;
+      console.log('Analyzing funnel:', url);
       const response = await axios.get<FunnelAnalysisResponse>(url, { withCredentials: true });
+      console.log('Funnel analysis response:', response.data);
       setAnalysisData(response.data.analysis || []);
       setBaselineRate(response.data.baseline?.rate ?? null);
       setFilteredRate(response.data.filtered?.rate ?? null);
       setConversionLift(response.data.conversionLiftPct ?? null);
+
+      if (!response.data.analysis || response.data.analysis.length === 0) {
+        console.warn('No analysis data returned. You may need to seed page views and user events.');
+      }
     } catch (err) {
       console.error('Failed to analyze funnel', err);
+      alert('Failed to analyze funnel. Please ensure you have seeded page views and user events data.');
     }
   };
 
@@ -163,7 +174,7 @@ const FunnelAnalysis: React.FC = () => {
       const url = window.URL.createObjectURL(new Blob([resp.data]));
       const a = document.createElement('a');
       a.href = url;
-      a.download = `funnel-${selectedFunnel.name}-${new Date().toISOString().slice(0,10)}.csv`;
+      a.download = `funnel-${selectedFunnel.name}-${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (err) {
@@ -187,7 +198,7 @@ const FunnelAnalysis: React.FC = () => {
       const url = window.URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }));
       const a = document.createElement('a');
       a.href = url;
-      a.download = `funnel-${selectedFunnel.name}-${new Date().toISOString().slice(0,10)}.pdf`;
+      a.download = `funnel-${selectedFunnel.name}-${new Date().toISOString().slice(0, 10)}.pdf`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (err) {
@@ -261,7 +272,7 @@ const FunnelAnalysis: React.FC = () => {
     return `${Math.round(seconds / 3600)}h`;
   };
 
-  
+
 
   const getBarColor = (conversionRate: number) => {
     if (conversionRate >= 70) return '#10b981'; // green
@@ -501,8 +512,35 @@ const FunnelAnalysis: React.FC = () => {
             {/* Funnel Steps */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-8">
               <h2 className="text-lg font-semibold text-slate-900 mb-6">Funnel Steps</h2>
-              <div className="space-y-4">
-                {analysisData.map((step, index) => (
+              {analysisData.length === 0 ? (
+                <div className="text-center py-12">
+                  <BarChart3 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-slate-900 mb-2">No Data Available</h3>
+                  <p className="text-slate-600 mb-4">
+                    This funnel doesn't have any data yet. You need to seed the following data:
+                  </p>
+                  <div className="inline-block text-left bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <ul className="text-sm text-slate-700 space-y-2">
+                      <li className="flex items-center gap-2">
+                        <span className="text-blue-600">→</span> Page Views (for pageview events)
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="text-blue-600">→</span> User Events (for click and custom events)
+                      </li>
+                    </ul>
+                  </div>
+                  <p className="text-sm text-slate-600 mb-4">
+                    Go to <strong>Admin → Seed Data Manager</strong> to seed this data
+                  </p>
+                  <button
+                    onClick={() => window.location.href = '/admin/seed-data'}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-2 font-medium"
+                  >
+                    Go to Seed Data Manager
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">{analysisData.map((step, index) => (
                   <div key={index} className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -543,34 +581,36 @@ const FunnelAnalysis: React.FC = () => {
                       </div>
                     )}
                   </div>
-                ))}
-              </div>
+                ))}</div>
+              )}
             </div>
 
             {/* Bar Chart */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-slate-900 mb-6">Step Comparison</h2>
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={analysisData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                  <XAxis dataKey="stepName" stroke="#94a3b8" style={{ fontSize: '12px' }} />
-                  <YAxis stroke="#94a3b8" style={{ fontSize: '12px' }} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#1e293b',
-                      border: '1px solid #475569',
-                      borderRadius: '8px',
-                      color: '#fff',
-                    }}
-                  />
-                  <Bar dataKey="users" radius={[8, 8, 0, 0]}>
-                    {analysisData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={getBarColor(entry.conversionRate)} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {analysisData.length > 0 && (
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                <h2 className="text-lg font-semibold text-slate-900 mb-6">Step Comparison</h2>
+                <ResponsiveContainer width="100%" height={400}>
+                  <BarChart data={analysisData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                    <XAxis dataKey="stepName" stroke="#94a3b8" style={{ fontSize: '12px' }} />
+                    <YAxis stroke="#94a3b8" style={{ fontSize: '12px' }} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#1e293b',
+                        border: '1px solid #475569',
+                        borderRadius: '8px',
+                        color: '#fff',
+                      }}
+                    />
+                    <Bar dataKey="users" radius={[8, 8, 0, 0]}>
+                      {analysisData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={getBarColor(entry.conversionRate)} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </>
         )}
       </div>
